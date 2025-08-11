@@ -1,47 +1,134 @@
-//src\main.ts
+// src/main.ts
 import './styles.css';
 import { UI } from './ui/ui';
 import { renderDashboard, renderClients, renderFoods, renderSettings } from './ui/components';
 import { FoodRepo } from './services/foodService';
 import { OrderRepo } from './services/orderService';
-import { Storage } from './services/storage';
-import { uid, normalizePhone, normalizeName, formatCurrency } from './utils';
+import { formatCurrency, normalizeName, normalizePhone } from './utils';
+
+// --- Estado Global de la Aplicación ---
+let currentScreen: 'dashboard' | 'clients' | 'foods' | 'settings' = 'dashboard';
+let countdownIntervalId: number | undefined;
+let remainingSeconds = 60;
+
+/**
+ * Función global que decide qué mostrar en el header.
+ * Es la única fuente de verdad para el contenido del header.
+ */
+export function updateGlobalHeaderState() {
+  // 1. Detiene cualquier cronómetro que esté corriendo para re-evaluar el estado.
+  if (countdownIntervalId) {
+    clearInterval(countdownIntervalId);
+    countdownIntervalId = undefined;
+  }
+
+  const allActiveOrders = OrderRepo.getAll();
+  const pendingCount = allActiveOrders.filter(o => !o.delivered).length;
+  const deliveredCount = allActiveOrders.length - pendingCount;
+
+  // 2. Decide qué mostrar
+  if (pendingCount > 0) {
+    // CASO A: Hay pedidos pendientes. Muestra el contador en TODAS las pantallas.
+    const counterHtml = `<div class="pulse-animation bg-red-500 text-white text-base font-bold w-8 h-8 flex items-center justify-center rounded-full">${pendingCount}</div>`;
+    UI.updateHeaderContent(counterHtml);
+    remainingSeconds = 60; // Resetea el cronómetro para la próxima vez.
+  } else if (deliveredCount > 0) {
+    // CASO B: No hay pendientes, pero sí entregados. El cronómetro debe correr.
+    startCountdown();
+  } else {
+    // CASO C: No hay pedidos activos. Limpia el header y resetea el cronómetro.
+    UI.updateHeaderContent('');
+    remainingSeconds = 60;
+  }
+}
+
+/**
+ * Inicia y gestiona el cronómetro.
+ * El contador de segundos disminuye en segundo plano, sin importar la pantalla.
+ * La VISUALIZACIÓN del cronómetro/botón solo ocurre si estamos en 'clients'.
+ */
+function startCountdown() {
+  const showArchiveButton = () => {
+    const buttonHtml = `<button id="archive-btn" title="Archivar pedidos entregados" class="bg-red-500 text-white w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-600"><i class="fa fa-trash-can fa-lg"></i></button>`;
+    if (currentScreen === 'clients') {
+      UI.updateHeaderContent(buttonHtml);
+      document.getElementById('archive-btn')?.addEventListener('click', () => {
+        UI.confirm('¿Deseas archivar todos los pedidos ya entregados?', () => {
+          OrderRepo.archiveDeliveredOrders();
+          renderCurrent();
+        });
+      });
+    } else {
+      UI.updateHeaderContent(''); // En otras pantallas no se muestra nada.
+    }
+  };
+
+  const updateTimerDisplay = () => {
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    const timerHtml = `<div class="bg-gray-400 text-white text-sm font-mono w-12 h-8 flex items-center justify-center rounded-lg">${minutes}:${seconds.toString().padStart(2, '0')}</div>`;
+    if (currentScreen === 'clients') {
+      UI.updateHeaderContent(timerHtml);
+    } else {
+      UI.updateHeaderContent(''); // En otras pantallas no se muestra nada.
+    }
+  };
+
+  if (remainingSeconds <= 0) {
+    showArchiveButton();
+    return;
+  }
+
+  updateTimerDisplay(); // Muestra el estado actual del tiempo si estamos en 'clients'
+
+  countdownIntervalId = setInterval(() => {
+    remainingSeconds--;
+
+    if (remainingSeconds <= 0) {
+      clearInterval(countdownIntervalId);
+      countdownIntervalId = undefined;
+      showArchiveButton();
+    } else {
+      updateTimerDisplay();
+    }
+  }, 1000);
+}
 
 // Inicial render shell
 UI.renderShell();
 
 // pantalla actual
-let screen: 'dashboard' | 'clients' | 'foods' | 'settings' = 'dashboard';
+//let screen: 'dashboard' | 'clients' | 'foods' | 'settings' = 'dashboard';
 
 function renderCurrent() {
-  UI.updateTitle(screen);
-  UI.renderNavActive(screen);
+  UI.updateTitle(currentScreen);
+  UI.renderNavActive(currentScreen);
+  updateGlobalHeaderState(); // Llama a la lógica del header cada vez que se cambia de pantalla
+
   const main = document.getElementById('mainArea')!;
   main.innerHTML = '';
   const container = document.createElement('div');
   main.appendChild(container);
 
-  if (screen === 'dashboard') renderDashboard(container);
-  else if (screen === 'clients') renderClients(container);
-  else if (screen === 'foods') renderFoods(container);
-  else if (screen === 'settings') renderSettings(container);
+  if (currentScreen === 'dashboard') renderDashboard(container);
+  else if (currentScreen === 'clients') renderClients(container);
+  else if (currentScreen === 'foods') renderFoods(container);
+  else if (currentScreen === 'settings') renderSettings(container);
 }
 
-// nav buttons
+// Navegación
 document.querySelectorAll('.nav-item').forEach((b: Element) => {
   b.addEventListener('click', (e) => {
     const btn = e.currentTarget as HTMLElement;
-    // determine which screen by text content (simple)
-    const txt = btn.textContent?.trim()?.toLowerCase();
-    if (txt?.includes('dash') || txt?.includes('gest')) screen = 'dashboard';
-    else if (txt?.includes('cliente')) screen = 'clients';
-    else if (txt?.includes('comid')) screen = 'foods';
-    else if (txt?.includes('ajust')) screen = 'settings';
-    renderCurrent();
+    const screen = btn.dataset.screen as typeof currentScreen;
+    if (screen && screen !== currentScreen) {
+      currentScreen = screen;
+      renderCurrent();
+    }
   });
 });
 
-// Global event listeners to open forms
+// Eventos para abrir formularios
 document.addEventListener('openOrderForm', (e: Event) => {
   const id = (e as CustomEvent).detail?.id as string | undefined;
   openOrderForm(id);
@@ -51,6 +138,7 @@ document.addEventListener('openFoodForm', (e: Event) => {
   openFoodForm(id);
 });
 
+// Render inicial de la aplicación
 renderCurrent();
 
 // ---- Forms behavior ----
@@ -104,26 +192,168 @@ function openFoodForm(foodId?: string) {
 function openOrderForm(orderId?: string) {
   const editing = orderId ? OrderRepo.findById(orderId) : null;
   const foods = FoodRepo.getAll().filter(f => f.isActive);
-  const options = foods.map(f => `<option ${editing?.foodId === f.id ? 'selected' : ''} value="${f.id}">${f.name}</option>`).join('');
+  const options = foods.map(f => `<option ${editing?.foodId === f.id ? 'selected' : ''} value="${f.id}" data-price="${f.price}">${f.name}</option>`).join('');
+
   const html = `
-    <h3 class="text-lg font-semibold">${editing ? 'Editar pedido' : 'Agregar pedido'}</h3>
-    <form id="orderForm" class="mt-3 space-y-3">
-      <div><label class="block text-sm">Nombre completo <input name="fullName" value="${editing?.fullName ?? ''}" required class="w-full px-3 py-2 border rounded" /></label></div>
-      <div><label class="block text-sm">Teléfono <input name="phone" value="${editing?.phone ?? ''}" required class="w-full px-3 py-2 border rounded" inputmode="numeric" /></label></div>
-      <div><label class="block text-sm">Dirección de entrega <input name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required class="w-full px-3 py-2 border rounded" /></label></div>
-      <div><label class="block text-sm">Comida <select name="foodId" class="w-full px-3 py-2 border rounded">${options}</select></label></div>
-      <div class="grid grid-cols-2 gap-2">
-        <label class="block text-sm">Cantidad <input name="quantity" type="number" min="1" value="${editing?.quantity ?? 1}" class="w-full px-3 py-2 border rounded" /></label>
-        <label class="inline-flex items-center gap-2"><input name="combo" type="checkbox" ${editing?.combo ? 'checked' : ''} /> Combo</label>
-      </div>
-      <div><label class="block text-sm">Fecha y hora de entrega <input name="deliveryTime" type="datetime-local" value="${editing ? toLocalDateInput(editing.deliveryTime) : ''}" required class="w-full px-3 py-2 border rounded" /></label></div>
-      <div class="flex justify-end gap-2">
-        <button type="button" id="cancelOrder" class="px-3 py-2 border rounded">Cancelar</button>
-        <button type="submit" class="px-3 py-2 bg-accent text-white rounded">${editing ? 'Actualizar' : 'Agregar'}</button>
-      </div>
-    </form>
+    <div class="relative max-h-[80vh] overflow-y-auto">
+      <div class="pr-8 text-center mb-6">
+  <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
+    ${editing ? 'Editar pedido' : 'Agregar pedido'} 
+    <i class="fa-solid fa-file-invoice-dollar fa-lg"></i>
+  </h3>
+</div>
+        <form id="orderForm" class="space-y-4">
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-user"></i> Nombre completo:
+            </label>
+            <input name="fullName" value="${editing?.fullName ?? ''}" required 
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" 
+              placeholder="Ingresa el nombre completo" />
+          </div>
+          
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-phone"></i> Teléfono:
+            </label>
+            <input
+              name="phone"
+              value="${editing?.phone ?? ''}"
+              required
+              maxlength="10"
+              pattern="\d{1,10}"
+              type="tel"
+              inputmode="numeric"
+              placeholder="Ej: 0987654321"
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1"
+            />
+          </div>
+          
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-map-marker-alt"></i> Dirección de entrega:
+            </label>
+            <input name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required 
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" 
+              placeholder="Dirección completa" />
+          </div>
+
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-clock"></i>Hora de entrega:
+            </label>
+            <input name="deliveryTime" type="datetime-local" value="${editing ? toLocalDateInput(editing.deliveryTime) : ''}" required 
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+          </div>
+          
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-utensils"></i> Comida:
+            </label>
+            <select name="foodId" id="foodSelect" 
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1">
+              <option value="">Seleccionar comida...</option>
+              ${options}
+            </select>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4 pb-2">
+            <div>
+              <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+                <i class="fa fa-sort-numeric-up"></i> Cantidad:
+              </label>
+              <input name="quantity" id="quantityInput" type="number" min="1" value="${editing?.quantity ?? 1}" 
+                class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+            </div>
+            <div class="flex items-end">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <div class="relative">
+                  <input name="combo" id="comboCheckbox" type="checkbox" ${editing?.combo ? 'checked' : ''} 
+                    class="sr-only" />
+                  <div class="combo-checkbox w-6 h-6 border-2 border-gray-400 rounded flex items-center justify-center transition-colors">
+                    <i class="fa fa-check text-white text-sm hidden"></i>
+                  </div>
+                </div>
+                <span class="text-base text-gray-500 font-bold flex items-center gap-2">
+                  <i class="fa fa-gift"></i> Combo
+                </span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4 pb-2">
+            <div>
+              <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+                <i class="fa fa-tag"></i> P. unitario:
+              </label>
+              <div id="unitPrice" class="text-gray-800 mt-1">$0.00</div>
+            </div>
+            <div>
+              <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+                <i class="fa fa-calculator"></i> Total:
+              </label>
+              <div id="totalPrice" class="font-bold text-lg text-green-600 mt-1">$0.00</div>
+            </div>
+          </div>
+          
+          <div class="flex justify-center gap-4 mt-6">
+            <button type="button" id="cancelOrder" class="flex items-center gap-2 px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg">
+              <i class="fa fa-times fa-lg"></i> Cancelar
+            </button>
+            <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors font-semibold text-lg">
+              <i class="fa ${editing ? 'fa-edit' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}
+            </button>
+          </div>
+        </form>
+    </div>
   `;
-  const { close } = UI.modal(html);
+
+  const { close } = UI.modal(html, { closeOnBackdropClick: false });
+
+  // Referencias a elementos
+  const foodSelect = document.getElementById('foodSelect') as HTMLSelectElement;
+  const quantityInput = document.getElementById('quantityInput') as HTMLInputElement;
+  const comboCheckbox = document.getElementById('comboCheckbox') as HTMLInputElement;
+  const unitPriceDiv = document.getElementById('unitPrice')!;
+  const totalPriceDiv = document.getElementById('totalPrice')!;
+
+  // Estilo del checkbox personalizado
+  const updateCheckboxStyle = () => {
+    const checkboxContainer = document.querySelector('.combo-checkbox')!;
+    const checkIcon = checkboxContainer.querySelector('.fa-check')!;
+
+    if (comboCheckbox.checked) {
+      checkboxContainer.classList.add('bg-accent', 'border-accent');
+      checkboxContainer.classList.remove('border-gray-400');
+      checkIcon.classList.remove('hidden');
+    } else {
+      checkboxContainer.classList.remove('bg-accent', 'border-accent');
+      checkboxContainer.classList.add('border-gray-400');
+      checkIcon.classList.add('hidden');
+    }
+  };
+
+  // Función para calcular y mostrar precios
+  const updatePricing = () => {
+    const selectedOption = foodSelect.selectedOptions[0];
+    const unitPrice = selectedOption ? parseFloat(selectedOption.dataset.price || '0') : 0;
+    const quantity = parseInt(quantityInput.value) || 1;
+    const total = unitPrice * quantity;
+
+    unitPriceDiv.textContent = formatCurrency(unitPrice);
+    totalPriceDiv.textContent = formatCurrency(total);
+  };
+
+  // Event listeners para actualizar precios
+  foodSelect.addEventListener('change', updatePricing);
+  quantityInput.addEventListener('input', updatePricing);
+  comboCheckbox.addEventListener('change', updateCheckboxStyle);
+
+  // Inicializar estilos y precios
+  updateCheckboxStyle();
+  updatePricing();
+
+  // Event listeners
   document.getElementById('cancelOrder')!.addEventListener('click', close);
 
   (document.getElementById('orderForm') as HTMLFormElement).addEventListener('submit', (ev) => {
@@ -137,8 +367,14 @@ function openOrderForm(orderId?: string) {
     const combo = !!data.get('combo');
     const deliveryTime = new Date(String(data.get('deliveryTime'))).toISOString();
 
-    if (!fullName || !phone || !deliveryAddress) { UI.toast('Completa los campos requeridos'); return; }
-    if (!foodId) { UI.toast('Selecciona una comida'); return; }
+    if (!fullName || !phone || !deliveryAddress) {
+      UI.toast('Completa los campos requeridos');
+      return;
+    }
+    if (!foodId) {
+      UI.toast('Selecciona una comida');
+      return;
+    }
 
     // gap rule
     const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
@@ -168,6 +404,6 @@ function toLocalDateInput(iso?: string) {
   if (!iso) return '';
   const d = new Date(iso);
   const off = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - off*60*1000);
-  return local.toISOString().slice(0,16);
+  const local = new Date(d.getTime() - off * 60 * 1000);
+  return local.toISOString().slice(0, 16);
 }

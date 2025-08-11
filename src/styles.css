@@ -64,3 +64,45 @@
   }
 }
 
+@keyframes pulse-red {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+}
+
+.pulse-animation {
+  animation: pulse-red 2s infinite;
+}
+
+
+/* Fix para que el toast aparezca por encima de los modales */
+#toastRoot {
+  position: fixed;
+  right: 1rem;
+  bottom: 6rem;
+  z-index: 9999; /* Más alto que cualquier modal */
+  pointer-events: none; /* Para que no interfiera con clics */
+}
+
+#toastRoot .toast {
+  pointer-events: auto; /* Restaurar eventos solo para el toast */
+}
+
+/* Asegurar que los modales tengan z-index consistente pero menor al toast */
+.modal-backdrop {
+  z-index: 50; /* Base para modales */
+}
+
+/* Para modales anidados (como el confirm dentro de details) */
+.modal-instance:nth-child(2) .modal-backdrop {
+  z-index: 60; /* Segundo modal (confirmación) */
+}
+
+.modal-instance:nth-child(3) .modal-backdrop {
+  z-index: 70; /* Tercer modal si existe */
+}

@@ -1,4 +1,4 @@
-// src\models.ts
+// src/models.ts
 export type ID = string;
 
 export interface Food {
@@ -20,8 +20,9 @@ export interface Order {
   foodId: ID;
   quantity: number;
   combo: boolean;
-  deliveryTime: string; // ISO
+  deliveryTime: string; 
   createdAt: number;
   delivered: boolean;
   deliveredAt?: string | null;
+  state: boolean; 
 }
