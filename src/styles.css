@@ -1,0 +1,66 @@
+:root {
+  --radius: 12px;
+}
+
+/* Simple visual polish for modals and toasts */
+.modal-backdrop {
+  z-index: 60;
+}
+.toast {
+  z-index: 70;
+}
+
+/* focus outline accessible */
+.button-focus:focus {
+  outline: 3px solid rgba(52,199,89,0.18);
+  outline-offset: 2px;
+}
+
+/* safe area support for iPhone notch */
+.safe-bottom {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+
+/* bottom nav visual polish */
+#bottomNav {
+  transition: all 160ms ease;
+  z-index: 80;
+}
+
+/* active item - extra emphasis on small screens */
+#bottomNav .nav-item.bg-accent {
+  transform: translateY(-2px);
+}
+
+/* shadow for the pill on desktop */
+#bottomNav .shadow-lg {
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+}
+
+/* ensure large tap targets on mobile */
+#bottomNav .nav-item {
+  min-height: 56px;
+  min-width: 64px;
+}
+
+/* icon size control inside nav-item (keeps visual medium size) */
+#bottomNav .nav-item i {
+  line-height: 1;
+}
+
+/* Responsive tweak: on medium+ screens center the pill and reduce width of items */
+@media (min-width: 768px) {
+  #bottomNav {
+    padding: 6px 8px;
+  }
+  #bottomNav .nav-item {
+    min-width: 110px;
+    padding: 8px 12px;
+    flex: 0 0 auto;
+  }
+  /* show labels more clearly on larger screens */
+  #bottomNav .nav-item span {
+    font-size: 0.9rem;
+  }
+}
+
