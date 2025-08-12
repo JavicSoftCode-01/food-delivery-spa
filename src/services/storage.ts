@@ -4,6 +4,8 @@ const KEY_META = 'fd_meta_v1';
 const KEY_FOODS = 'fd_foods_v1';
 const KEY_ORDERS = 'fd_orders_v1';
 const KEY_AUDIT = 'fd_audit_v1';
+const KEY_FOOD_SALE_RECORDS = 'fd_food_sale_records_v1'; 
+
 
 export const Storage = {
   read<T>(key: string): T | null {
@@ -24,5 +26,5 @@ export const Storage = {
       return false;
     }
   },
-  keys: { KEY_META, KEY_FOODS, KEY_ORDERS, KEY_AUDIT },
+  keys: { KEY_META, KEY_FOODS, KEY_ORDERS, KEY_AUDIT, KEY_FOOD_SALE_RECORDS },
 };

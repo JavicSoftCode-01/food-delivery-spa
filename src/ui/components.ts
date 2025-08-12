@@ -6,384 +6,268 @@ import { formatCurrency, normalizePhone, normalizeName, getSearchablePhone  } fr
 import { Order } from '../models';
 import { updateGlobalHeaderState } from '../main';
 
-
+// ... (Las funciones toLocalDateInput, formatPhoneForWhatsApp, renderDashboard, handleDeliveryToggle, renderClients, showCallModal, showOrderDetails no cambian y se omiten por brevedad) ...
 function toLocalDateInput(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const off = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - off * 60 * 1000);
-  return local.toISOString().slice(0, 16);
-}
-
+    if (!iso) return '';
+    const d = new Date(iso);
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60 * 1000);
+    return local.toISOString().slice(0, 16);
+    }
+    
 function formatPhoneForWhatsApp(phone: string): string {
-  const cleanPhone = phone.replace(/\D/g, '');
-  if (cleanPhone.startsWith('0')) {
-    const withoutZero = cleanPhone.substring(1);
-    if (withoutZero.length === 9) {
-      return `+593 ${withoutZero.substring(0, 2)} ${withoutZero.substring(2, 5)} ${withoutZero.substring(5)}`;
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.startsWith('0')) {
+        const withoutZero = cleanPhone.substring(1);
+        if (withoutZero.length === 9) {
+        return `+593${withoutZero.substring(0, 2)}${withoutZero.substring(2, 5)}${withoutZero.substring(5)}`;
+        }
     }
-  }
-  if (cleanPhone.startsWith('593')) {
-    const number = cleanPhone.substring(3);
-    if (number.length === 9) {
-      return `+593 ${number.substring(0, 2)} ${number.substring(2, 5)} ${number.substring(5)}`;
+    if (cleanPhone.startsWith('593')) {
+        const number = cleanPhone.substring(3);
+        if (number.length === 9) {
+        return `+593${number.substring(0, 2)}${number.substring(2, 5)}${number.substring(5)}`;
+        }
     }
-  }
-  return phone;
+    return phone;
 }
-
-// --- Componentes de Renderizado ---
+    
 export function renderDashboard(container: HTMLElement): void {
-  const foods = FoodRepo.getAll();
-  const orders = OrderRepo.getSorted();
-  const pending = orders.filter((o) => !o.delivered).length;
-  const delivered = orders.filter((o) => o.delivered).length;
-  const revenue = FoodRepo.totalProfit();
+const foods = FoodRepo.getAll();
+const orders = OrderRepo.getSorted();
+const pending = orders.filter((o) => !o.delivered).length;
+const delivered = orders.filter((o) => o.delivered).length;
+const revenue = FoodRepo.totalProfit();
 
-  container.innerHTML = `
-    <section class="space-y-4">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="p-3 bg-white rounded-xl border border-border shadow">
-          <div class="text-sm text-gray-500">Pedidos pendientes</div>
-          <div class="text-2xl font-semibold">${pending}</div>
-        </div>
-        <div class="p-3 bg-white rounded-xl border border-border shadow">
-          <div class="text-sm text-gray-500">Entregas realizadas</div>
-          <div class="text-2xl font-semibold">${delivered}</div>
-        </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="p-3 bg-white rounded-xl border border-border shadow">
-          <div class="text-sm text-gray-500">Variedades</div>
-          <div class="text-xl font-semibold">${foods.length}</div>
-        </div>
-        <div class="p-3 bg-white rounded-xl border border-border shadow">
-          <div class="text-sm text-gray-500">Beneficio total</div>
-          <div class="text-xl font-semibold">${formatCurrency(revenue)}</div>
-        </div>
-      </div>
-      <div class="flex gap-2">
-        <button id="btnAddOrderQuick" class="flex-1 px-3 py-2 bg-accent text-white rounded-lg">Nuevo pedido</button>
-        <button id="btnAddFoodQuick" class="flex-1 px-3 py-2 border rounded-lg">Nueva comida</button>
-      </div>
-    </section>
-  `;
+container.innerHTML = `<section class="space-y-4"> <div class="grid grid-cols-2 gap-3"> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Pedidos pendientes</div> <div class="text-2xl font-semibold">${pending}</div> </div> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Entregas realizadas</div> <div class="text-2xl font-semibold">${delivered}</div> </div> </div> <div class="grid grid-cols-2 gap-3"> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Variedades</div> <div class="text-xl font-semibold">${foods.length}</div> </div> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Beneficio total</div> <div class="text-xl font-semibold">${formatCurrency(revenue)}</div> </div> </div> <div class="flex gap-2"> <button id="btnAddOrderQuick" class="flex-1 px-3 py-2 bg-accent text-white rounded-lg">Nuevo pedido</button> <button id="btnAddFoodQuick" class="flex-1 px-3 py-2 border rounded-lg">Nueva comida</button> </div> </section>`;
 
-  container.querySelector('#btnAddOrderQuick')?.addEventListener('click', () => {
+container.querySelector('#btnAddOrderQuick')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('openOrderForm'));
-  });
-  container.querySelector('#btnAddFoodQuick')?.addEventListener('click', () => {
+});
+container.querySelector('#btnAddFoodQuick')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('openFoodForm'));
-  });
+});
 }
-
-// Handle delivery toggle logic
-// This function updates the order status and handles UI updates accordingly.
-// It also updates the global header state to reflect changes in the order status.
+    
 export function handleDeliveryToggle(
-  order: Order,
-  toggle: HTMLInputElement,
-  updateVisuals: (isDelivered: boolean) => void,
-  onUpdate: () => void
-) {
-  const isChecked = toggle.checked;
+    order: Order,
+    toggle: HTMLInputElement,
+    updateVisuals: (isDelivered: boolean) => void,
+    onUpdate: () => void
+    ) {
+    const isChecked = toggle.checked;
 
-  if (isChecked) {
-    toggle.checked = false;
-    updateVisuals(false);
-    UI.confirm(
-      `🟢 Quiere confirmar la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> ✅ Perteneciente al teléfono <strong>${order.phone}</strong>`,
-      () => {
-        order.delivered = true;
-        order.deliveredAt = new Date().toISOString();
-        OrderRepo.update(order);
-        UI.toast('Pedido marcado como entregado');
-        updateGlobalHeaderState();
-        toggle.checked = true;
-        updateVisuals(true);
-        onUpdate();
-      }
-    );
-  } else {
-    toggle.checked = true;
-    updateVisuals(true);
-
-    UI.confirm(
-      `🔴 Quiere revertir la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> Perteneciente al teléfono <strong>${order.phone}</strong> 〽️`,
-      () => {
-        order.delivered = false;
-        order.deliveredAt = null;
-        OrderRepo.update(order);
-        UI.toast('Entrega revertida');
-        updateGlobalHeaderState();
+    if (isChecked) {
         toggle.checked = false;
         updateVisuals(false);
-        onUpdate();
-      }
-    );
-  }
-}
-
-// Render clients list with search and actions
-
+        UI.confirm(
+        `🟢 Quiere confirmar la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> ✅ Perteneciente al teléfono <strong>${order.phone}</strong>`,
+        () => {
+            const updatedOrder = { ...order, delivered: true, deliveredAt: new Date().toISOString() };
+            OrderRepo.update(updatedOrder);
+            UI.toast('Pedido marcado como entregado');
+            updateGlobalHeaderState();
+            toggle.checked = true;
+            updateVisuals(true);
+            onUpdate();
+        }
+        );
+    } else {
+        toggle.checked = true;
+        updateVisuals(true);
+    
+        UI.confirm(
+        `🔴 Quiere revertir la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> Perteneciente al teléfono <strong>${order.phone}</strong> 〽️`,
+        () => {
+            const updatedOrder = { ...order, delivered: false, deliveredAt: null };
+            OrderRepo.update(updatedOrder);
+            UI.toast('Entrega revertida');
+            updateGlobalHeaderState();
+            toggle.checked = false;
+            updateVisuals(false);
+            onUpdate();
+        }
+        );
+    
+    }
+    }
+        
 export function renderClients(container: HTMLElement): void {
-  container.innerHTML = `
-    <div class="bg-white rounded-xl border p-3 space-y-3 pb-20">
-      <div class="flex gap-2 items-center">
-        <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border rounded-lg" inputmode="text" />
-        <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button>
-      </div>
-      <div id="ordersList" class="space-y-2"></div>
-    </div>
-  `;
+container.innerHTML = `<div class="bg-white rounded-xl border p-3 space-y-3 pb-20"> <div class="flex gap-2 items-center"> <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border rounded-lg" inputmode="text" /> <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button> </div> <div id="ordersList" class="space-y-2"></div> </div>`;
 
-  const filterInp = container.querySelector('#inputFilterPhone') as HTMLInputElement;
-  const ordersListContainer = container.querySelector('#ordersList')!;
+const filterInp = container.querySelector('#inputFilterPhone') as HTMLInputElement;
+const ordersListContainer = container.querySelector('#ordersList')!;
 
-  function refreshListView() {
+function refreshListView() {
     const list = OrderRepo.getSorted();
     const filterText = filterInp.value.toLowerCase().trim();
 
     if (!filterText) {
-      renderList(list);
-      return;
+    renderList(list);
+    return;
     }
 
     const searchablePhoneTerm = getSearchablePhone(filterText);
-    
+
     const filtered = list.filter(order => {
-      const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
-      
-      let phoneMatch = false;
-      if (searchablePhoneTerm.length > 0) {
+    const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
+    
+    let phoneMatch = false;
+    if (searchablePhoneTerm.length > 0) {
         const orderPhoneAsSearchable = getSearchablePhone(order.phone);
         phoneMatch = orderPhoneAsSearchable.includes(searchablePhoneTerm);
-      }
-      
-      return nameMatch || phoneMatch;
+    }
+    
+    return nameMatch || phoneMatch;
     });
 
     renderList(filtered);
-  }
+}
 
-  const renderList = (list: Order[]) => {
+const renderList = (list: Order[]) => {
     ordersListContainer.innerHTML = '';
     if (!list.length) {
-      ordersListContainer.innerHTML = `<div class="text-gray-500 text-center py-4">Sin resultados o Prueba con los últimos 9 dígitos del teléfono.</div>`;
-      return;
+    ordersListContainer.innerHTML = `<div class="text-gray-500 text-center py-4">Sin resultados o Prueba con los últimos 9 dígitos del teléfono.</div>`;
+    return;
     }
 
     list.forEach(o => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'p-3 bg-gray-50 rounded-lg border';
-      wrapper.innerHTML = `
+    const wrapper = document.createElement('div');
+    wrapper.className = 'p-3 bg-gray-50 rounded-lg border';
+    wrapper.innerHTML = `
         <div class="font-bold text-xl flex items-center"><i class="fa fa-user mr-2"></i> ${o.fullName}</div>
         <div class="text-base text-gray-600 mt-2 flex items-center">
-          <i class="fa fa-clock mr-2"></i><span class="font-semibold">Hora de entrega:</span>&nbsp;${new Date(o.deliveryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace('AM', 'a. m.').replace('PM', 'p. m.')}
+        <i class="fa fa-clock mr-2"></i><span class="font-semibold">Hora de entrega:</span>&nbsp;${new Date(o.deliveryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace('AM', 'a. m.').replace('PM', 'p. m.')}
         </div>
         <div class="text-base text-gray-600 mt-1 flex items-center">
-          <i class="fa fa-mobile mr-2"></i><span class="font-semibold">Teléfono:</span> &nbsp;${o.phone}
+        <i class="fa fa-mobile mr-2"></i><span class="font-semibold">Teléfono:</span> &nbsp;${o.phone}
         </div>
         <div class="flex items-center gap-2 justify-between mt-2">
-          <div class="flex gap-5">
+        <div class="flex gap-5">
             <button data-phone="${o.phone}" class="callBtn p-2 text-gray-600 hover:text-blue-600 border-2 rounded">
-              <i class="fa fa-phone fa-lg"></i>
+            <i class="fa fa-phone fa-lg"></i>
             </button>
             <button data-id="${o.id}" class="viewOrder p-2 text-gray-600 hover:text-blue-600 border-2 rounded">
-              <i class="fa fa-eye fa-lg"></i>
+            <i class="fa fa-eye fa-lg"></i>
             </button>
             <button data-id="${o.id}" class="editOrder p-2 text-gray-600 hover:text-yellow-600 border-2 rounded">
-              <i class="fa-solid fa-pencil fa-lg text-yellow-500 opacity-80"></i>
+            <i class="fa-solid fa-pencil fa-lg text-yellow-500 opacity-80"></i>
             </button>
-          </div>
-          <div class="flex items-center">
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input data-id="${o.id}" type="checkbox" ${o.delivered ? 'checked' : ''} class="sr-only deliveredToggle">
-              <div class="toggle-bg w-11 h-6 ${o.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full">
-                <div class="toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${o.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
-              </div>
-            </label>
-          </div>
         </div>
-      `;
-      ordersListContainer.appendChild(wrapper);
+        <div class="flex items-center">
+            <label class="relative inline-flex items-center cursor-pointer">
+            <input data-id="${o.id}" type="checkbox" ${o.delivered ? 'checked' : ''} class="sr-only deliveredToggle">
+            <div class="toggle-bg w-11 h-6 ${o.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full">
+                <div class="toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${o.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+            </label>
+        </div>
+        </div>
+    `;
+    ordersListContainer.appendChild(wrapper);
     });
 
     ordersListContainer.querySelectorAll<HTMLInputElement>('.deliveredToggle').forEach(inp => {
-      inp.addEventListener('change', e => {
+    inp.addEventListener('change', e => {
         const toggle = e.currentTarget as HTMLInputElement;
         const id = toggle.dataset.id!;
         const order = OrderRepo.findById(id);
         if (order) {
-            // Asumiendo que tienes una función `handleDeliveryToggle` para manejar esto.
-            handleDeliveryToggle(order, toggle, () => {}, refreshListView);
-            // Si no la tienes, puedes poner la lógica directamente:
-            order.delivered = toggle.checked;
-            OrderRepo.update(order);
-            refreshListView(); // Refresca la lista para reflejar los cambios visuales y de estado
+            const updateVisuals = (isDelivered: boolean) => {
+            const bg = toggle.nextElementSibling!;
+            const dot = bg.firstElementChild!;
+            bg.className = `toggle-bg w-11 h-6 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full`;
+            dot.className = `toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
+            };
+            handleDeliveryToggle(order, toggle, updateVisuals, refreshListView);
         }
-      });
+    });
     });
 
     ordersListContainer.querySelectorAll<HTMLElement>('.callBtn').forEach(btn => btn.addEventListener('click', e => {
-      showCallModal((e.currentTarget as HTMLElement).dataset.phone!);
+    showCallModal((e.currentTarget as HTMLElement).dataset.phone!);
     }));
     ordersListContainer.querySelectorAll<HTMLElement>('.viewOrder').forEach(btn => btn.addEventListener('click', e => {
-      showOrderDetails((e.currentTarget as HTMLElement).dataset.id!, refreshListView);
+    showOrderDetails((e.currentTarget as HTMLElement).dataset.id!, refreshListView);
     }));
     ordersListContainer.querySelectorAll<HTMLElement>('.editOrder').forEach(btn => btn.addEventListener('click', e => {
-      document.dispatchEvent(new CustomEvent('openOrderForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
+    document.dispatchEvent(new CustomEvent('openOrderForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
     }));
-  };
 
-  filterInp.addEventListener('input', refreshListView);
+};
 
-  container.querySelector('#btnAddOrder')?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('openOrderForm')));
+filterInp.addEventListener('input', refreshListView);
 
-  refreshListView();
+container.querySelector('#btnAddOrder')?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('openOrderForm')));
+
+refreshListView();
 }
-
-// Show call modal (phone or WhatsApp)
 function showCallModal(phone: string) {
-  const whatsappPhone = formatPhoneForWhatsApp(phone);
-  const html = `
-    <div class="text-center">
-      <h3 class="text-lg font-semibold mb-4">Contactar Cliente <i class="fa fa-user"></i></h3>
-      <div class="flex gap-3 justify-center">
-        <button id="callPhone" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75">
-          <i class="fa-solid fa-phone-volume text-3xl text-blue-600"></i><span class="text-sm">Teléfono</span>
-        </button>
-        <button id="callWhatsApp" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75">
-          <i class="fab fa-whatsapp text-4xl text-green-600"></i><span class="text-sm">WhatsApp</span>
-        </button>
-      </div>
-    </div>
-  `;
+    const whatsappPhone = formatPhoneForWhatsApp(phone);
+    const html = `<div class="text-center"> <h3 class="text-lg font-semibold mb-4">Contactar Cliente <i class="fa fa-user"></i></h3> <div class="flex gap-3 justify-center"> <button id="callPhone" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75"> <i class="fa-solid fa-phone-volume text-3xl text-blue-600"></i><span class="text-sm">Teléfono</span> </button> <button id="callWhatsApp" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75"> <i class="fab fa-whatsapp text-4xl text-green-600"></i><span class="text-sm">WhatsApp</span> </button> </div> </div>`;
 
-  const { close, element } = UI.modal(html);
-  element.querySelector('#callPhone')!.addEventListener('click', () => { window.open(`tel:${phone}`); close(); });
-  element.querySelector('#callWhatsApp')!.addEventListener('click', () => { window.open(`https://wa.me/${whatsappPhone.replace(/\s/g, '')}`); close(); });
+    const { close, element } = UI.modal(html);
+    element.querySelector('#callPhone')!.addEventListener('click', () => { window.open(`tel:${phone}`); close(); });
+    element.querySelector('#callWhatsApp')!.addEventListener('click', () => { window.open(`https://wa.me/${whatsappPhone.replace(/\s/g, '')}`); close(); });
 }
 
-// Show order details modal
 function showOrderDetails(orderId: string, onUpdate: () => void) {
-  const order = OrderRepo.findById(orderId);
-  if (!order) {
-    UI.toast('Pedido no encontrado');
-    return;
-  }
+const order = OrderRepo.findById(orderId);
+if (!order) {
+UI.toast('Pedido no encontrado');
+return;
+}
+    
+const food = FoodRepo.findById(order.foodId);
+const unitPrice = food?.price || 0;
+const total = unitPrice * order.quantity;
+    
+const deliveryTimeFormatted = new Date(order.deliveryTime)
+.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: true })
+.replace('AM', 'a. m.')
+.replace('PM', 'p. m.');
 
-  const food = FoodRepo.findById(order.foodId);
-  const unitPrice = food?.price || 0;
-  const total = unitPrice * order.quantity;
+const html = `<button id="closeDetails" class="absolute top-1 right-1 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"> <i class="fa fa-times text-lg"></i> </button> <div class="relative max-h-[80vh] overflow-y-auto"> <div class="pr-8"> <h3 class="text-xl font-bold mb-4 text-center">Detalles del Pedido <i class="fa-solid fa-file-invoice-dollar fa-lg"></i></h3> <div class="space-y-4"> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Cliente:</label> <div class="text-gray-800">${order.fullName}</div> </div> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Hora de entrega:</label> <div class="text-gray-800">${deliveryTimeFormatted}</div> </div> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Dirección:</label> <div class="text-gray-800">${order.deliveryAddress}</div> </div> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Comida:</label> <div class="text-gray-800">${food?.name || 'No encontrado'}</div> </div> <div class="grid grid-cols-2 gap-4 border-b pb-2"> <div> <label class="text-base text-gray-500 font-bold">Cantidad:</label> <div class="text-gray-800">${order.quantity}</div> </div> <div> <label class="text-base text-gray-500 font-bold">Combo:</label> <div class="text-gray-800">${order.combo ? 'Sí' : 'No'}</div> </div> </div> <div class="grid grid-cols-2 gap-4 border-b pb-2"> <div> <label class="text-base text-gray-500 font-bold">P. unitario:</label> <div class="text-gray-800">${formatCurrency(unitPrice)}</div> </div> <div> <label class="text-base text-gray-500 font-bold">Total:</label> <div class="font-bold text-lg text-green-600">${formatCurrency(total)}</div> </div> </div> </div> <div class="flex justify-between items-center mt-6"> <button id="callFromDetails" data-phone="${order.phone}" class="flex items-center gap-2 px-4 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50"> <i class="fa fa-phone"></i><span class="font-bold">Llamar</span> </button> <div class="flex items-center gap-2"> <span class="text-base text-gray-500 font-bold">Entregado:</span> <label class="relative inline-flex items-center cursor-pointer"> <input id="detailsToggle" data-id="${order.id}" type="checkbox" ${order.delivered ? 'checked' : ''} class="sr-only"> <div id="toggleBg" class="toggle-bg-details w-11 h-6 ${order.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative"> <div id="toggleDot" class="toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${order.delivered ? 'translate-x-5' : 'translate-x-0'}"></div> </div> </label> </div> </div> </div> </div>`;
 
-  // Formato personalizado para la hora
-  const deliveryTimeFormatted = new Date(order.deliveryTime)
-    .toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: true })
-    .replace('AM', 'a. m.')
-    .replace('PM', 'p. m.');
+const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
+element.querySelector('#closeDetails')!.addEventListener('click', close);
+element.querySelector('#callFromDetails')!.addEventListener('click', e => showCallModal((e.currentTarget as HTMLElement).dataset.phone!));
 
-  const html = `
-    <button id="closeDetails" class="absolute top-1 right-1 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10">
-          <i class="fa fa-times text-lg"></i>
-    </button>
-    <div class="relative max-h-[80vh] overflow-y-auto">
-      <div class="pr-8">
-        <h3 class="text-xl font-bold mb-4 text-center">Detalles del Pedido <i class="fa-solid fa-file-invoice-dollar fa-lg"></i></h3>
-        <div class="space-y-4">
-          <div class="border-b pb-2">
-            <label class="text-base text-gray-500 font-bold">Cliente:</label>
-            <div class="text-gray-800">${order.fullName}</div>
-          </div>
-          <div class="border-b pb-2">
-            <label class="text-base text-gray-500 font-bold">Hora de entrega:</label>
-            <div class="text-gray-800">${deliveryTimeFormatted}</div>
-          </div>
-          <div class="border-b pb-2">
-            <label class="text-base text-gray-500 font-bold">Dirección:</label>
-            <div class="text-gray-800">${order.deliveryAddress}</div>
-          </div>
-          <div class="border-b pb-2">
-            <label class="text-base text-gray-500 font-bold">Comida:</label>
-            <div class="text-gray-800">${food?.name || 'No encontrado'}</div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 border-b pb-2">
-            <div>
-              <label class="text-base text-gray-500 font-bold">Cantidad:</label>
-              <div class="text-gray-800">${order.quantity}</div>
-            </div>
-            <div>
-              <label class="text-base text-gray-500 font-bold">Combo:</label>
-              <div class="text-gray-800">${order.combo ? 'Sí' : 'No'}</div>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 border-b pb-2">
-            <div>
-              <label class="text-base text-gray-500 font-bold">P. unitario:</label>
-              <div class="text-gray-800">${formatCurrency(unitPrice)}</div>
-            </div>
-            <div>
-              <label class="text-base text-gray-500 font-bold">Total:</label>
-              <div class="font-bold text-lg text-green-600">${formatCurrency(total)}</div>
-            </div>
-          </div>
-        </div>
-        <div class="flex justify-between items-center mt-6">
-          <button id="callFromDetails" data-phone="${order.phone}" class="flex items-center gap-2 px-4 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50">
-            <i class="fa fa-phone"></i><span class="font-bold">Llamar</span>
-          </button>
-          <div class="flex items-center gap-2">
-            <span class="text-base text-gray-500 font-bold">Entregado:</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input id="detailsToggle" data-id="${order.id}" type="checkbox" ${order.delivered ? 'checked' : ''} class="sr-only">
-              <div id="toggleBg" class="toggle-bg-details w-11 h-6 ${order.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative">
-                <div id="toggleDot" class="toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${order.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+const toggle = element.querySelector('#detailsToggle') as HTMLInputElement;
 
-  const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
-  element.querySelector('#closeDetails')!.addEventListener('click', close);
-  element.querySelector('#callFromDetails')!.addEventListener('click', e => showCallModal((e.currentTarget as HTMLElement).dataset.phone!));
-
-  const toggle = element.querySelector('#detailsToggle') as HTMLInputElement;
-  const toggleBg = element.querySelector('#toggleBg')!;
-  const toggleDot = element.querySelector('#toggleDot')!;
-
-  // Función para actualizar la apariencia visual del toggle
-  const updateToggleVisuals = (isDelivered: boolean) => {
+const updateToggleVisuals = (isDelivered: boolean) => {
+    const toggleBg = element.querySelector('#toggleBg')!;
+    const toggleDot = element.querySelector('#toggleDot')!;
     if (isDelivered) {
-      toggleBg.className = 'toggle-bg-details w-11 h-6 bg-green-600 rounded-full relative';
-      toggleDot.className = 'toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-5';
+    toggleBg.className = 'toggle-bg-details w-11 h-6 bg-green-600 rounded-full relative';
+    toggleDot.className = 'toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-5';
     } else {
-      toggleBg.className = 'toggle-bg-details w-11 h-6 bg-red-500 rounded-full relative';
-      toggleDot.className = 'toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-0';
+    toggleBg.className = 'toggle-bg-details w-11 h-6 bg-red-500 rounded-full relative';
+    toggleDot.className = 'toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-0';
     }
-  };
+};
 
-  toggle.addEventListener('change', e => {
+toggle.addEventListener('change', e => {
     const currentOrder = OrderRepo.findById(orderId);
     if (!currentOrder) return;
 
-    handleDeliveryToggle(currentOrder, toggle, updateToggleVisuals, onUpdate);
-  });
+    handleDeliveryToggle(currentOrder, toggle, updateToggleVisuals, () => {
+    onUpdate();
+    close(); 
+    });
+});
 }
-
+    
 export function renderFoods(container: HTMLElement): void {
   const foods = FoodRepo.getAll();
   container.innerHTML = `
     <div class="bg-white rounded-xl p-3 border space-y-3">
-      <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold">Comidas</h2>
-        <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button>
-      </div>
-      <div id="foodsList" class="space-y-2"></div>
-    </div>
-  `;
+        <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">Comidas</h2>
+            <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button>
+        </div>
+        <div id="foodsList" class="space-y-2"></div>
+    </div>`;
 
   const target = container.querySelector('#foodsList')!;
   if (!foods || foods.length === 0) {
@@ -392,54 +276,44 @@ export function renderFoods(container: HTMLElement): void {
     target.innerHTML = '';
     foods.forEach((f) => {
       const row = document.createElement('div');
-      row.className = 'p-3 bg-gray-50 rounded-lg border flex justify-between items-center';
+      row.className = `p-3 bg-gray-50 rounded-lg border flex justify-between items-center ${!f.isActive ? 'opacity-50' : ''}`;
       row.innerHTML = `
         <div>
-          <div class="font-semibold">${f.name} <span class="text-sm text-gray-500">(${f.isActive ? 'Activo' : 'Inactivo'})</span></div>
-          <div class="text-sm text-gray-600">Vendidos: ${f.amountSold || 0} · Stock: ${f.stock} · Precio: ${formatCurrency(f.price)}</div>
+          <div class="font-semibold">${f.name} <span class="text-sm font-bold ${f.isActive ? 'text-green-600' : 'text-red-500'}">(${f.isActive ? 'Activo' : 'Inactivo'})</span></div>
+          <div class="text-sm text-gray-600">Vendidos (sesión actual): ${f.amountSold || 0} &middot; Stock: ${f.stock} &middot; Precio: ${formatCurrency(f.price)}</div>
         </div>
         <div class="flex gap-2">
-          <button data-id="${f.id}" class="editFood btn px-3 py-1 border rounded">Editar</button>
-        </div>
-      `;
+            <button data-id="${f.id}" class="salesHistoryBtn btn px-3 py-1 border rounded text-sm bg-blue-500 text-white hover:bg-blue-600">Historial</button>
+            <button data-id="${f.id}" class="editFood btn px-3 py-1 border rounded text-sm">Editar</button>
+        </div>`;
       target.appendChild(row);
     });
 
-    target.querySelectorAll<HTMLElement>('.editFood').forEach((b) => {
+    target.querySelectorAll<HTMLElement>('.editFood').forEach(b => {
       b.addEventListener('click', (e) => {
-        const id = (e.currentTarget as HTMLElement).dataset.id!;
-        document.dispatchEvent(new CustomEvent('openFoodForm', { detail: { id } }));
+        document.dispatchEvent(new CustomEvent('openFoodForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
       });
+    });
+
+    target.querySelectorAll<HTMLElement>('.salesHistoryBtn').forEach(b => {
+        b.addEventListener('click', (e) => {
+            document.dispatchEvent(new CustomEvent('openSalesHistory', { detail: { foodId: (e.currentTarget as HTMLElement).dataset.id! }}));
+        });
     });
   }
 
-  const addFoodBtn = container.querySelector('#btnAddFood');
-  addFoodBtn?.addEventListener('click', () => {
+  container.querySelector('#btnAddFood')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('openFoodForm'));
   });
 }
+
 
 export function renderSettings(container: HTMLElement): void {
   const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}') || {};
   const gap = meta.deliveryGapMinutes ?? 15;
   const dark = meta.darkMode ?? false;
 
-  container.innerHTML = `
-    <div class="bg-white rounded-xl p-3 border space-y-3">
-      <h2 class="text-lg font-semibold">Ajustes</h2>
-      <label class="flex items-center gap-2">
-        <span class="text-sm text-gray-600 w-48">Brecha de entrega (minutos)</span>
-        <input id="inputGap" type="number" min="0" value="${gap}" class="px-3 py-2 border rounded-lg w-28" />
-      </label>
-      <label class="flex items-center gap-2">
-        <span class="text-sm text-gray-600 w-48">Modo oscuro</span>
-        <input id="toggleDark" type="checkbox" ${dark ? 'checked' : ''} />
-      </label>
-      <div class="flex gap-2 justify-end">
-        <button id="btnClearAudit" class="px-3 py-2 border rounded">Limpiar logs</button>
-      </div>
-    </div>
-  `;
+  container.innerHTML = `<div class="bg-white rounded-xl p-3 border space-y-3"> <h2 class="text-lg font-semibold">Ajustes</h2> <label class="flex items-center gap-2"> <span class="text-sm text-gray-600 w-48">Brecha de entrega (minutos)</span> <input id="inputGap" type="number" min="0" value="${gap}" class="px-3 py-2 border rounded-lg w-28" /> </label> <label class="flex items-center gap-2"> <span class="text-sm text-gray-600 w-48">Modo oscuro</span> <input id="toggleDark" type="checkbox" ${dark ? 'checked' : ''} /> </label> <div class="flex gap-2 justify-end"> <button id="btnClearAudit" class="px-3 py-2 border rounded">Limpiar logs</button> </div> </div>`;
 
   const gapInput = container.querySelector('#inputGap') as HTMLInputElement | null;
   gapInput?.addEventListener('change', (e) => {
