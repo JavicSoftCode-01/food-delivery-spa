@@ -2,7 +2,7 @@
 import { UI } from './ui';
 import { FoodRepo } from '../services/foodService';
 import { OrderRepo } from '../services/orderService';
-import { formatCurrency, normalizePhone, normalizeName } from '../utils';
+import { formatCurrency, normalizePhone, normalizeName, getSearchablePhone  } from '../utils';
 import { Order } from '../models';
 import { updateGlobalHeaderState } from '../main';
 
@@ -125,11 +125,12 @@ export function handleDeliveryToggle(
 }
 
 // Render clients list with search and actions
+
 export function renderClients(container: HTMLElement): void {
   container.innerHTML = `
     <div class="bg-white rounded-xl border p-3 space-y-3 pb-20">
       <div class="flex gap-2 items-center">
-        <input id="inputFilterPhone" placeholder="Buscar por teléfono" class="flex-1 px-3 py-2 border rounded-lg" inputmode="tel" />
+        <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border rounded-lg" inputmode="text" />
         <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button>
       </div>
       <div id="ordersList" class="space-y-2"></div>
@@ -140,16 +141,35 @@ export function renderClients(container: HTMLElement): void {
   const ordersListContainer = container.querySelector('#ordersList')!;
 
   function refreshListView() {
-    const filterValue = filterInp.value;
     const list = OrderRepo.getSorted();
-    const filtered = filterValue ? list.filter(o => (o.phone || '').includes(filterValue)) : list;
+    const filterText = filterInp.value.toLowerCase().trim();
+
+    if (!filterText) {
+      renderList(list);
+      return;
+    }
+
+    const searchablePhoneTerm = getSearchablePhone(filterText);
+    
+    const filtered = list.filter(order => {
+      const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
+      
+      let phoneMatch = false;
+      if (searchablePhoneTerm.length > 0) {
+        const orderPhoneAsSearchable = getSearchablePhone(order.phone);
+        phoneMatch = orderPhoneAsSearchable.includes(searchablePhoneTerm);
+      }
+      
+      return nameMatch || phoneMatch;
+    });
+
     renderList(filtered);
   }
 
   const renderList = (list: Order[]) => {
     ordersListContainer.innerHTML = '';
     if (!list.length) {
-      ordersListContainer.innerHTML = `<div class="text-gray-500 text-center py-4">No hay pedidos activos</div>`;
+      ordersListContainer.innerHTML = `<div class="text-gray-500 text-center py-4">Sin resultados o Prueba con los últimos 9 dígitos del teléfono.</div>`;
       return;
     }
 
@@ -159,27 +179,29 @@ export function renderClients(container: HTMLElement): void {
       wrapper.innerHTML = `
         <div class="font-bold text-xl flex items-center"><i class="fa fa-user mr-2"></i> ${o.fullName}</div>
         <div class="text-base text-gray-600 mt-2 flex items-center">
-          <i class="fa fa-clock mr-2"></i><span class="font-semibold">Hora de entrega:</span>&nbsp;${new Date(o.deliveryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace('AM', 'A.M.').replace('PM', 'P.M.')}
+          <i class="fa fa-clock mr-2"></i><span class="font-semibold">Hora de entrega:</span>&nbsp;${new Date(o.deliveryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace('AM', 'a. m.').replace('PM', 'p. m.')}
         </div>
         <div class="text-base text-gray-600 mt-1 flex items-center">
           <i class="fa fa-mobile mr-2"></i><span class="font-semibold">Teléfono:</span> &nbsp;${o.phone}
         </div>
         <div class="flex items-center gap-2 justify-between mt-2">
           <div class="flex gap-5">
-          <button data-phone="${o.phone}" class="callBtn p-2 text-gray-600 hover:text-blue-600 border-2 rounded">
-            <i class="fa fa-phone fa-lg"></i>
-          </button>
-          <button data-id="${o.id}" class="viewOrder p-2 text-gray-600 hover:text-blue-600 border-2 rounded">
-            <i class="fa fa-eye fa-lg"></i>
-          </button>
-          <button data-id="${o.id}" class="editOrder p-2 text-gray-600 hover:text-yellow-600 border-2 rounded">
-            <i class="fa-solid fa-pencil fa-lg text-yellow-500 opacity-80"></i>
-          </button>
+            <button data-phone="${o.phone}" class="callBtn p-2 text-gray-600 hover:text-blue-600 border-2 rounded">
+              <i class="fa fa-phone fa-lg"></i>
+            </button>
+            <button data-id="${o.id}" class="viewOrder p-2 text-gray-600 hover:text-blue-600 border-2 rounded">
+              <i class="fa fa-eye fa-lg"></i>
+            </button>
+            <button data-id="${o.id}" class="editOrder p-2 text-gray-600 hover:text-yellow-600 border-2 rounded">
+              <i class="fa-solid fa-pencil fa-lg text-yellow-500 opacity-80"></i>
+            </button>
           </div>
           <div class="flex items-center">
             <label class="relative inline-flex items-center cursor-pointer">
               <input data-id="${o.id}" type="checkbox" ${o.delivered ? 'checked' : ''} class="sr-only deliveredToggle">
-              <div class="toggle-bg w-11 h-6 ${o.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full"><div class="toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${o.delivered ? 'translate-x-5' : 'translate-x-0'}"></div></div>
+              <div class="toggle-bg w-11 h-6 ${o.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full">
+                <div class="toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${o.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
+              </div>
             </label>
           </div>
         </div>
@@ -187,52 +209,37 @@ export function renderClients(container: HTMLElement): void {
       ordersListContainer.appendChild(wrapper);
     });
 
-    // --- Asignación de Listeners ---
     ordersListContainer.querySelectorAll<HTMLInputElement>('.deliveredToggle').forEach(inp => {
       inp.addEventListener('change', e => {
         const toggle = e.currentTarget as HTMLInputElement;
-        const toggleBg = toggle.nextElementSibling as HTMLElement;
-        const toggleDot = toggleBg.querySelector('.toggle-dot') as HTMLElement;
-
-        const updateToggleVisual = (isDelivered: boolean) => {
-          if (isDelivered) {
-            toggleBg.className = 'toggle-bg w-11 h-6 bg-green-600 rounded-full';
-            toggleDot.className = 'toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-5';
-          } else {
-            toggleBg.className = 'toggle-bg w-11 h-6 bg-red-500 rounded-full';
-            toggleDot.className = 'toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-0';
-          }
-        };
-
         const id = toggle.dataset.id!;
         const order = OrderRepo.findById(id);
-        if (!order) return;
-        
-        handleDeliveryToggle(order, toggle, updateToggleVisual, refreshListView);
+        if (order) {
+            // Asumiendo que tienes una función `handleDeliveryToggle` para manejar esto.
+            handleDeliveryToggle(order, toggle, () => {}, refreshListView);
+            // Si no la tienes, puedes poner la lógica directamente:
+            order.delivered = toggle.checked;
+            OrderRepo.update(order);
+            refreshListView(); // Refresca la lista para reflejar los cambios visuales y de estado
+        }
       });
     });
 
-    ordersListContainer.querySelectorAll<HTMLElement>('.callBtn').forEach(btn => btn.addEventListener('click', e => showCallModal((e.currentTarget as HTMLElement).dataset.phone!)));
-    ordersListContainer.querySelectorAll<HTMLElement>('.viewOrder').forEach(btn => btn.addEventListener('click', e => showOrderDetails((e.currentTarget as HTMLElement).dataset.id!, refreshListView)));
-    ordersListContainer.querySelectorAll<HTMLElement>('.editOrder').forEach(btn => btn.addEventListener('click', e => document.dispatchEvent(new CustomEvent('openOrderForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }))));
+    ordersListContainer.querySelectorAll<HTMLElement>('.callBtn').forEach(btn => btn.addEventListener('click', e => {
+      showCallModal((e.currentTarget as HTMLElement).dataset.phone!);
+    }));
+    ordersListContainer.querySelectorAll<HTMLElement>('.viewOrder').forEach(btn => btn.addEventListener('click', e => {
+      showOrderDetails((e.currentTarget as HTMLElement).dataset.id!, refreshListView);
+    }));
+    ordersListContainer.querySelectorAll<HTMLElement>('.editOrder').forEach(btn => btn.addEventListener('click', e => {
+      document.dispatchEvent(new CustomEvent('openOrderForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
+    }));
   };
 
-  // --- Listeners de la Vista ---
-  let phoneValidationTimeout: number | undefined;
-  filterInp.addEventListener('input', () => {
-    if (phoneValidationTimeout) clearTimeout(phoneValidationTimeout);
-    let val = filterInp.value.replace(/\D/g, '');
-    if (val.length > 10) val = val.substring(0, 10);
-    filterInp.value = val;
-    if (val.length >= 2 && !val.startsWith('09')) {
-      phoneValidationTimeout = window.setTimeout(() => UI.toast('El teléfono debe empezar con 09.'), 5000);
-    }
-    refreshListView();
-  });
+  filterInp.addEventListener('input', refreshListView);
 
   container.querySelector('#btnAddOrder')?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('openOrderForm')));
 
-  // Render inicial de la lista
   refreshListView();
 }
 
@@ -281,7 +288,6 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
           <i class="fa fa-times text-lg"></i>
     </button>
     <div class="relative max-h-[80vh] overflow-y-auto">
-      
       <div class="pr-8">
         <h3 class="text-xl font-bold mb-4 text-center">Detalles del Pedido <i class="fa-solid fa-file-invoice-dollar fa-lg"></i></h3>
         <div class="space-y-4">
@@ -362,7 +368,7 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
   toggle.addEventListener('change', e => {
     const currentOrder = OrderRepo.findById(orderId);
     if (!currentOrder) return;
-    
+
     handleDeliveryToggle(currentOrder, toggle, updateToggleVisuals, onUpdate);
   });
 }

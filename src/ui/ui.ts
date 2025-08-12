@@ -68,7 +68,8 @@ export const UI = {
 
     modalWrapper.innerHTML = `
       <div class="modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: ${zIndex};">
-        <div class="modal-content bg-white rounded-xl w-full max-w-xl p-4 shadow-lg relative -mt-12">
+        <div class="modal-content bg-white rounded-xl w-full max-w-xl p-4 shadow-lg relative
+            -mt-[80px] sm:-mt-[60px] md:-mt-[80px] lg:-mt-[100px]">
           ${html}
         </div>
       </div>

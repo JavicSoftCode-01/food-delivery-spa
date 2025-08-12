@@ -4,7 +4,7 @@ import { UI } from './ui/ui';
 import { renderDashboard, renderClients, renderFoods, renderSettings } from './ui/components';
 import { FoodRepo } from './services/foodService';
 import { OrderRepo } from './services/orderService';
-import { formatCurrency, normalizeName, normalizePhone } from './utils';
+import { formatCurrency, normalizeName, normalizePhone, getPhonePrefixError, debounce, isValidPhoneFormat, toCanonicalPhone  } from './utils';
 
 // --- Estado Global de la Aplicación ---
 let currentScreen: 'dashboard' | 'clients' | 'foods' | 'settings' = 'dashboard';
@@ -96,9 +96,6 @@ function startCountdown() {
 
 // Inicial render shell
 UI.renderShell();
-
-// pantalla actual
-//let screen: 'dashboard' | 'clients' | 'foods' | 'settings' = 'dashboard';
 
 function renderCurrent() {
   UI.updateTitle(currentScreen);
@@ -195,13 +192,13 @@ function openOrderForm(orderId?: string) {
   const options = foods.map(f => `<option ${editing?.foodId === f.id ? 'selected' : ''} value="${f.id}" data-price="${f.price}">${f.name}</option>`).join('');
 
   const html = `
-    <div class="relative max-h-[80vh] overflow-y-auto">
+    <div class="relative max-h-[70vh] overflow-y-auto">
       <div class="pr-8 text-center mb-6">
-  <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
-    ${editing ? 'Editar pedido' : 'Agregar pedido'} 
-    <i class="fa-solid fa-file-invoice-dollar fa-lg"></i>
-  </h3>
-</div>
+        <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
+          ${editing ? 'Editar pedido' : 'Agregar pedido'} 
+          <i class="fa-solid fa-file-invoice-dollar fa-lg"></i>
+        </h3>
+      </div>
         <form id="orderForm" class="space-y-4">
           <div class="pb-2">
             <label class="text-base text-gray-500 font-bold flex items-center gap-2">
@@ -218,13 +215,12 @@ function openOrderForm(orderId?: string) {
             </label>
             <input
               name="phone"
+              id="phoneInput"
               value="${editing?.phone ?? ''}"
               required
-              maxlength="10"
-              pattern="\d{1,10}"
               type="tel"
-              inputmode="numeric"
-              placeholder="Ej: 0987654321"
+              inputmode="tel"
+              placeholder="Formatos: 09xxxxxxxx, +593xxxxxxxxx o +593 9X XXX XXXX"
               class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1"
             />
           </div>
@@ -311,6 +307,7 @@ function openOrderForm(orderId?: string) {
   const { close } = UI.modal(html, { closeOnBackdropClick: false });
 
   // Referencias a elementos
+  const phoneInput = document.getElementById('phoneInput') as HTMLInputElement;
   const foodSelect = document.getElementById('foodSelect') as HTMLSelectElement;
   const quantityInput = document.getElementById('quantityInput') as HTMLInputElement;
   const comboCheckbox = document.getElementById('comboCheckbox') as HTMLInputElement;
@@ -344,6 +341,87 @@ function openOrderForm(orderId?: string) {
     totalPriceDiv.textContent = formatCurrency(total);
   };
 
+  // -- LÓGICA DE VALIDACIÓN DE TELÉFONO MEJORADA --
+
+  // 1. Formateo en tiempo real para el campo de teléfono con límites dinámicos
+  const handlePhoneInput = (ev: Event) => {
+    const input = ev.target as HTMLInputElement;
+    const caretPosition = input.selectionStart;
+    const originalValue = input.value;
+
+    // Normalizar el valor con límites dinámicos
+    const normalizedValue = normalizePhone(originalValue);
+
+    // Solo actualizar si hay cambios para evitar interferencia con el cursor
+    if (normalizedValue !== originalValue) {
+      input.value = normalizedValue;
+
+      // Restaurar posición del cursor de forma inteligente
+      if (caretPosition !== null) {
+        // Si se eliminaron caracteres, mantener posición
+        // Si se agregaron (espacios), mover cursor adelante
+        const lengthDiff = normalizedValue.length - originalValue.length;
+        const newPosition = Math.min(caretPosition + lengthDiff, normalizedValue.length);
+        input.setSelectionRange(newPosition, newPosition);
+      }
+    }
+  };
+
+  // 2. Validación visual en tiempo real
+  const updatePhoneValidation = () => {
+    const value = phoneInput.value;
+    const isComplete = isValidPhoneFormat(value);
+
+    // Cambiar estilo del borde según validación
+    if (value.length === 0) {
+      // Campo vacío - estilo normal
+      phoneInput.classList.remove('border-green-500', 'border-red-500');
+      phoneInput.classList.add('border-gray-300');
+    } else if (isComplete) {
+      // Formato válido y completo - verde
+      phoneInput.classList.remove('border-gray-300', 'border-red-500');
+      // phoneInput.classList.add('border-green-500');
+    } else {
+      // Incompleto o inválido - mantener gris mientras escribe
+      phoneInput.classList.remove('border-green-500', 'border-red-500');
+      phoneInput.classList.add('border-gray-300');
+    }
+  };
+
+  // 3. Validación de prefijo con retardo
+  const debouncedPrefixCheck = debounce(() => {
+    const errorMessage = getPhonePrefixError(phoneInput.value);
+    if (errorMessage) {
+      UI.toast(errorMessage);
+    }
+  }, 3000); // Reducido a 3 segundos para mejor UX
+
+  // Asignar listeners al campo de teléfono
+  phoneInput.addEventListener('input', (ev) => {
+    handlePhoneInput(ev);
+    updatePhoneValidation();
+    debouncedPrefixCheck();
+  });
+
+  phoneInput.addEventListener('blur', () => {
+    // Validación final al salir del campo
+    const value = phoneInput.value;
+    if (value.length > 0 && !isValidPhoneFormat(value)) {
+      phoneInput.classList.add('border-red-500');
+      phoneInput.classList.remove('border-gray-300', 'border-green-500');
+    }
+  });
+
+  phoneInput.addEventListener('focus', () => {
+    // Limpiar estilo de error al enfocar
+    if (phoneInput.classList.contains('border-red-500')) {
+      phoneInput.classList.remove('border-red-500');
+      phoneInput.classList.add('border-gray-300');
+    }
+  });
+
+  // --- FIN DE LA LÓGICA DE VALIDACIÓN ---
+
   // Event listeners para actualizar precios
   foodSelect.addEventListener('change', updatePricing);
   quantityInput.addEventListener('input', updatePricing);
@@ -352,31 +430,63 @@ function openOrderForm(orderId?: string) {
   // Inicializar estilos y precios
   updateCheckboxStyle();
   updatePricing();
+  updatePhoneValidation(); // Inicializar validación visual
 
   // Event listeners
   document.getElementById('cancelOrder')!.addEventListener('click', close);
 
-  (document.getElementById('orderForm') as HTMLFormElement).addEventListener('submit', (ev) => {
+   (document.getElementById('orderForm') as HTMLFormElement).addEventListener('submit', (ev) => {
     ev.preventDefault();
     const data = new FormData(ev.currentTarget as HTMLFormElement);
     const fullName = normalizeName(String(data.get('fullName') || ''));
-    const phone = normalizePhone(String(data.get('phone') || ''));
+    const phone = normalizePhone(String(data.get('phone') || '')); // Se mantiene para la visualización y validación de formato
     const deliveryAddress = normalizeName(String(data.get('deliveryAddress') || ''));
     const foodId = String(data.get('foodId') || '');
     const quantity = Math.max(1, Number(data.get('quantity')) || 1);
     const combo = !!data.get('combo');
     const deliveryTime = new Date(String(data.get('deliveryTime'))).toISOString();
 
+    // -- VALIDACIÓN FINAL AL ENVIAR --
     if (!fullName || !phone || !deliveryAddress) {
-      UI.toast('Completa los campos requeridos');
-      return;
-    }
-    if (!foodId) {
-      UI.toast('Selecciona una comida');
+      UI.toast('Completa todos los campos requeridos.');
       return;
     }
 
-    // gap rule
+    if (!isValidPhoneFormat(phone)) {
+      UI.toast('El formato del teléfono es inválido. Use: 09xxxxxxxx, +593xxxxxxxxx o +593 9X XXX XXXX');
+      phoneInput.focus();
+      phoneInput.classList.add('border-red-500');
+      phoneInput.classList.remove('border-gray-300', 'border-green-500');
+      return;
+    }
+
+    if (!foodId) {
+      UI.toast('Selecciona una comida.');
+      return;
+    }
+
+    // --- VALIDACIÓN DE UNICIDAD DE TELÉFONO AJUSTADA ---
+    const canonicalPhone = toCanonicalPhone(phone);
+    if (canonicalPhone) {
+      const existingOrder = OrderRepo.getAll().find(order => {
+        // Excluir la orden actual si se está editando
+        if (editing && order.id === editing.id) {
+          return false;
+        }
+        // Comparar la versión canónica del teléfono de la orden existente con la actual
+        return toCanonicalPhone(order.phone) === canonicalPhone;
+      });
+
+      if (existingOrder) {
+        UI.toast(`El teléfono ya está registrado para el cliente '${existingOrder.fullName}'.`);
+        phoneInput.focus();
+        phoneInput.classList.add('border-red-500');
+        return; // Detener el proceso
+      }
+    }
+    // --- FIN DE LA VALIDACIÓN DE UNICIDAD ---
+
+    // Verificación de conflictos de horario (esto se mantiene igual)
     const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
     const gap = meta.deliveryGapMinutes ?? 15;
     const conflict = OrderRepo.checkConflict(deliveryTime, phone, gap, editing?.id);
@@ -385,15 +495,16 @@ function openOrderForm(orderId?: string) {
       return;
     }
 
-    // stock check for new delivered state not needed (new orders are not delivered)
+    // Guardar pedido (esto se mantiene igual)
     if (editing) {
       const updated = { ...editing, fullName, phone, deliveryAddress, foodId, quantity, combo, deliveryTime };
       OrderRepo.update(updated);
-      UI.toast('Pedido actualizado');
+      UI.toast('Pedido actualizado exitosamente.');
     } else {
       OrderRepo.add({ fullName, phone, deliveryAddress, foodId, quantity, combo, deliveryTime });
-      UI.toast('Pedido agregado');
+      UI.toast('Pedido agregado exitosamente.');
     }
+
     close();
     renderCurrent();
   }, { once: true });
