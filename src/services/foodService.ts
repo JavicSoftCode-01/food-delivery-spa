@@ -3,215 +3,215 @@ import { Food, FoodSaleRecord } from '../models';
 import { Storage } from './storage';
 import { uid, nowTs } from '../utils';
 
+/** Key for storing foods in storage. */
 const KEY = Storage.keys.KEY_FOODS;
-const KEY_RECORDS = Storage.keys.KEY_FOOD_SALE_RECORDS; // Nueva clave de storage
+/** Key for storing food sale records in storage. */
+const KEY_RECORDS = Storage.keys.KEY_FOOD_SALE_RECORDS;
 
-// --- NUEVO: Repositorio para el historial de ventas de comidas ---
+/** Repository for managing food sale records. */
 export const FoodSaleRecordRepo = {
+  /** Retrieves all food sale records. */
   getAll(): FoodSaleRecord[] {
     return Storage.read<FoodSaleRecord[]>(KEY_RECORDS) || [];
   },
+
+  /** Saves all food sale records. */
   saveAll(list: FoodSaleRecord[]) {
     Storage.write(KEY_RECORDS, list);
   },
-  add(record: Omit<FoodSaleRecord, 'id'>) {
+
+  /** Adds a new food sale record and returns it. */
+  add(record: Omit<FoodSaleRecord, 'id'>): FoodSaleRecord {
     const newRecord: FoodSaleRecord = { id: uid('record_'), ...record };
     const all = this.getAll();
     all.push(newRecord);
     this.saveAll(all);
     return newRecord;
   },
+
+  /** Updates an existing food sale record. */
   update(updated: FoodSaleRecord) {
     const all = this.getAll().map(r => r.id === updated.id ? { ...r, ...updated } : r);
     this.saveAll(all);
   },
+
+  /** Finds food sale records by food ID, sorted by date descending. */
   findByFoodId(foodId: string): FoodSaleRecord[] {
-    return this.getAll().filter(r => r.foodId === foodId).sort((a, b) => new Date(b.recordDate).getTime() - new Date(a.recordDate).getTime());
+    return this.getAll().filter(r => r.foodId === foodId).sort((a, b) => {
+      const dateComparison = new Date(b.recordDate).getTime() - new Date(a.recordDate).getTime();
+      if (dateComparison !== 0) return dateComparison;
+      return b.id.localeCompare(a.id);
+    });
   },
-  findActiveByFoodId(foodId: string): FoodSaleRecord | undefined {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      return this.getAll().find(r => r.foodId === foodId && r.recordDate === todayStr && r.isActive);
+
+  /** Finds the latest active food sale record by food ID. */
+  findLatestActiveByFoodId(foodId: string): FoodSaleRecord | undefined {
+    return this.findByFoodId(foodId).find(r => r.isActive);
   }
 };
 
+/** Repository for managing foods. */
 export const FoodRepo = {
+  /** Retrieves all foods. */
   getAll(): Food[] {
     return Storage.read<Food[]>(KEY) || [];
   },
+
+  /** Saves all foods. */
   saveAll(list: Food[]) {
-    this.handleSalesRecordCreation();
     Storage.write(KEY, list);
   },
-  // Alerta al iniciar la app: si hay comidas activas de días pasados, crea registros.
-  handleSalesRecordCreation() {
-    const allFoods = this.getAll();
-    const todayStr = new Date().toISOString().slice(0, 10);
 
-    allFoods.forEach(food => {
-        if(food.isActive) {
-            const records = FoodSaleRecordRepo.findByFoodId(food.id);
-            const todayRecord = records.find(r => r.recordDate === todayStr);
-            if(!todayRecord) {
-                 // Si está activa pero no tiene registro de hoy, significa que la venta es de un día nuevo.
-                 // Creamos el registro y reseteamos el contador de vendidos en el objeto principal.
-                FoodSaleRecordRepo.add({
-                    foodId: food.id,
-                    recordDate: todayStr,
-                    startTime: '00:00',
-                    endTime: '23:59',
-                    initialStock: food.stock,
-                    unitPrice: food.price,
-                    unitCost: food.cost,
-                    quantitySold: 0,
-                    isActive: true,
-                });
-                food.amountSold = 0; // Se resetea para el nuevo día
-            }
-        }
-    });
-    Storage.write(KEY, allFoods);
-  },
-
-  add(f: Omit<Food,'id'|'createdAt'|'amountSold'|'isActive'>) {
+  /** Adds a new food and its initial sale record, returns the food. */
+  add(
+    f: Omit<Food, 'id' | 'createdAt' | 'amountSold' | 'isActive'>,
+    times: { startTime: string, endTime: string }
+  ): Food {
     const obj: Food = { id: uid('food_'), amountSold: 0, createdAt: nowTs(), isActive: true, ...f };
     const all = this.getAll();
     all.push(obj);
     this.saveAll(all);
-    
-    // Crear el primer registro de ventas para la nueva comida
+
     const todayStr = new Date().toISOString().slice(0, 10);
     FoodSaleRecordRepo.add({
-        foodId: obj.id,
-        recordDate: todayStr,
-        startTime: '00:00', // Valor por defecto
-        endTime: '23:59',   // Valor por defecto
-        initialStock: obj.stock,
-        unitPrice: obj.price,
-        unitCost: obj.cost,
-        quantitySold: 0,
-        isActive: true
+      foodId: obj.id,
+      recordDate: todayStr,
+      startTime: times.startTime,
+      endTime: times.endTime,
+      initialStock: obj.stock,
+      unitPrice: obj.price,
+      unitCost: obj.cost,
+      quantitySold: 0,
+      isActive: true
     });
-    
+
     console.log('Food created', { id: obj.id, name: obj.name });
     return obj;
   },
 
-  update(updated: Food) {
-      const original = this.findById(updated.id);
+  /** Updates a food and handles related sale record changes. */
+  update(
+    updated: Food,
+    options?: { startTime?: string, endTime?: string }
+  ) {
+    const original = this.findById(updated.id);
+    if (!original) return;
 
-      if (original) {
-          const todayStr = new Date().toISOString().slice(0, 10);
-          const activeRecord = FoodSaleRecordRepo.findActiveByFoodId(updated.id);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const latestActiveRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(updated.id);
 
-          // CASO: Se está activando una comida
-          if (updated.isActive && !original.isActive) {
-              if (activeRecord) {
-                  // Si ya existe un registro para hoy (fue desactivada y reactivada), solo lo reactivamos
-                  activeRecord.isActive = true;
-                  // Si se añade más stock, se suma al stock inicial del día
-                  if (updated.stock > original.stock) {
-                    activeRecord.initialStock += (updated.stock - original.stock);
-                  }
-                  FoodSaleRecordRepo.update(activeRecord);
-              } else {
-                  // Si no hay registro hoy, es un nuevo día de venta.
-                  // Se resetea el contador de ventas en el objeto `Food`
-                  updated.amountSold = 0;
-                  // Se crea un nuevo registro para hoy
-                  FoodSaleRecordRepo.add({
-                      foodId: updated.id,
-                      recordDate: todayStr,
-                      startTime: '00:00',
-                      endTime: '23:59',
-                      initialStock: updated.stock,
-                      unitPrice: updated.price,
-                      unitCost: updated.cost,
-                      quantitySold: 0,
-                      isActive: true
-                  });
-              }
-          }
-          // CASO: Se está desactivando una comida
-          else if (!updated.isActive && original.isActive) {
-              if (activeRecord) {
-                  // Se actualiza la cantidad vendida final y se desactiva la sesión de venta
-                  activeRecord.quantitySold = updated.amountSold;
-                  activeRecord.isActive = false;
-                  FoodSaleRecordRepo.update(activeRecord);
-              }
-          }
-          // CASO: La comida ya está activa y solo se actualizan datos (ej. precio, costo)
-          else if (updated.isActive && activeRecord) {
-              activeRecord.unitPrice = updated.price;
-              activeRecord.unitCost = updated.cost;
-               if (updated.stock > original.stock) {
-                    const diff = updated.stock - original.stock;
-                    activeRecord.initialStock += diff;
-                }
-              FoodSaleRecordRepo.update(activeRecord);
-          }
+    const hasPriceChanged = Math.abs(updated.price - original.price) > 0.001 || Math.abs(updated.cost - original.cost) > 0.001;
+
+    if (updated.isActive && hasPriceChanged) {
+      if (latestActiveRecord && latestActiveRecord.recordDate === todayStr) {
+        latestActiveRecord.isActive = false;
+        FoodSaleRecordRepo.update(latestActiveRecord);
       }
+      updated.amountSold = 0;
 
-      const all = this.getAll().map(f => f.id === updated.id ? { ...f, ...updated } : f);
-      this.saveAll(all);
-      console.log('Food updated', { id: updated.id, name: updated.name });
+      FoodSaleRecordRepo.add({
+        foodId: updated.id,
+        recordDate: todayStr,
+        startTime: options?.startTime || '08:00',
+        endTime: options?.endTime || '23:00',
+        initialStock: updated.stock,
+        unitPrice: updated.price,
+        unitCost: updated.cost,
+        quantitySold: 0,
+        isActive: true,
+      });
+    } else if (updated.isActive && !original.isActive) {
+      const recordToday = FoodSaleRecordRepo.findByFoodId(updated.id).find(r => r.recordDate === todayStr);
+
+      if (recordToday && !hasPriceChanged) {
+        recordToday.isActive = true;
+        if (updated.stock > original.stock) {
+          recordToday.initialStock += (updated.stock - original.stock);
+        }
+        if (options?.startTime) recordToday.startTime = options.startTime;
+        if (options?.endTime) recordToday.endTime = options.endTime;
+        FoodSaleRecordRepo.update(recordToday);
+      } else {
+        updated.amountSold = 0;
+        FoodSaleRecordRepo.add({
+          foodId: updated.id,
+          recordDate: todayStr,
+          startTime: options?.startTime || '08:00',
+          endTime: options?.endTime || '23:00',
+          initialStock: updated.stock,
+          unitPrice: updated.price,
+          unitCost: updated.cost,
+          quantitySold: 0,
+          isActive: true
+        });
+      }
+    } else if (!updated.isActive && original.isActive) {
+      if (latestActiveRecord) {
+        latestActiveRecord.isActive = false;
+        FoodSaleRecordRepo.update(latestActiveRecord);
+      }
+    } else if (updated.isActive && latestActiveRecord) {
+      if (updated.stock > original.stock) {
+        const diff = updated.stock - original.stock;
+        latestActiveRecord.initialStock += diff;
+      }
+      if (options?.startTime) latestActiveRecord.startTime = options.startTime;
+      if (options?.endTime) latestActiveRecord.endTime = options.endTime;
+      FoodSaleRecordRepo.update(latestActiveRecord);
+    }
+
+    const all = this.getAll().map(f => f.id === updated.id ? { ...f, ...updated } : f);
+    this.saveAll(all);
+    console.log('Food updated', { id: updated.id, name: updated.name });
   },
 
-  findById(id: string) {
+  /** Finds a food by ID. */
+  findById(id: string): Food | undefined {
     return this.getAll().find(f => f.id === id);
   },
 
-  nameExists(name: string, exceptId?: string) {
+  /** Checks if a food name exists, excluding a specific ID if provided. */
+  nameExists(name: string, exceptId?: string): boolean {
     const n = name.trim().toLowerCase();
     return this.getAll().some(f => f.id !== exceptId && f.name.trim().toLowerCase() === n);
   },
 
-  totalUnitsSold() {
-      // Suma las ventas de todos los registros históricos
-    return FoodSaleRecordRepo.getAll().reduce((s, r) => s + (r.quantitySold || 0), 0);
-  },
-  
-  totalProfit() {
-    // Calcula el beneficio total basado en el historial
-    return FoodSaleRecordRepo.getAll().reduce((s, r) => s + (r.quantitySold || 0) * ((r.unitPrice || 0) - (r.unitCost || 0)), 0);
+  /** Calculates total profit from all foods. */
+  totalProfit(): number {
+    return this.getAll().reduce((s, f) => s + (f.amountSold || 0) * ((f.price || 0) - (f.cost || 0)), 0);
   },
 
+  /** Decreases stock and increases sold amount for a food, updates active record. */
   decreaseStock(foodId: string, quantity: number): void {
     const allFoods = this.getAll();
     const foodIndex = allFoods.findIndex(f => f.id === foodId);
     if (foodIndex > -1) {
-        allFoods[foodIndex].stock = Math.max(0, allFoods[foodIndex].stock - quantity);
-        allFoods[foodIndex].amountSold += quantity;
-        this.saveAll(allFoods);
-        
-        // Actualiza también el registro de venta activo
-        const activeRecord = FoodSaleRecordRepo.findActiveByFoodId(foodId);
-        if(activeRecord) {
-            activeRecord.quantitySold += quantity;
-            FoodSaleRecordRepo.update(activeRecord);
-        }
-        console.log(`Stock decreased for ${allFoods[foodIndex].name}`, { newStock: allFoods[foodIndex].stock });
+      allFoods[foodIndex].stock = Math.max(0, allFoods[foodIndex].stock - quantity);
+      allFoods[foodIndex].amountSold += quantity;
+      this.saveAll(allFoods);
+
+      const activeRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(foodId);
+      if (activeRecord) {
+        activeRecord.quantitySold += quantity;
+        FoodSaleRecordRepo.update(activeRecord);
+      }
     }
   },
 
+  /** Increases stock and decreases sold amount for a food, updates active record. */
   increaseStock(foodId: string, quantity: number): void {
     const allFoods = this.getAll();
     const foodIndex = allFoods.findIndex(f => f.id === foodId);
     if (foodIndex > -1) {
-        allFoods[foodIndex].stock += quantity;
-        allFoods[foodIndex].amountSold = Math.max(0, allFoods[foodIndex].amountSold - quantity);
-        this.saveAll(allFoods);
+      allFoods[foodIndex].stock += quantity;
+      allFoods[foodIndex].amountSold = Math.max(0, allFoods[foodIndex].amountSold - quantity);
+      this.saveAll(allFoods);
 
-        // Actualiza también el registro de venta activo
-        const activeRecord = FoodSaleRecordRepo.findActiveByFoodId(foodId);
-        if(activeRecord) {
-            activeRecord.quantitySold = Math.max(0, activeRecord.quantitySold - quantity);
-            FoodSaleRecordRepo.update(activeRecord);
-        }
-        console.log(`Stock increased for ${allFoods[foodIndex].name}`, { newStock: allFoods[foodIndex].stock });
+      const activeRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(foodId);
+      if (activeRecord) {
+        activeRecord.quantitySold = Math.max(0, activeRecord.quantitySold - quantity);
+        FoodSaleRecordRepo.update(activeRecord);
+      }
     }
   },
 };
-
-// Iniciar el manejo de registros al cargar la app
-FoodRepo.handleSalesRecordCreation();

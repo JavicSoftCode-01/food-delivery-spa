@@ -1,140 +1,595 @@
 // src/ui/components.ts
 import { UI } from './ui';
-import { FoodRepo } from '../services/foodService';
+import { FoodRepo, FoodSaleRecordRepo } from '../services/foodService';
 import { OrderRepo } from '../services/orderService';
-import { formatCurrency, normalizePhone, normalizeName, getSearchablePhone  } from '../utils';
-import { Order } from '../models';
+import { formatCurrency, normalizeName, getSearchablePhone, formatPhoneForWhatsApp, formatTime, formatClockTime } from '../utils';
+import { Order, Food, FoodSaleRecord } from '../models';
 import { updateGlobalHeaderState } from '../main';
 
-// ... (Las funciones toLocalDateInput, formatPhoneForWhatsApp, renderDashboard, handleDeliveryToggle, renderClients, showCallModal, showOrderDetails no cambian y se omiten por brevedad) ...
-function toLocalDateInput(iso?: string): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const off = d.getTimezoneOffset();
-    const local = new Date(d.getTime() - off * 60 * 1000);
-    return local.toISOString().slice(0, 16);
-    }
-    
-function formatPhoneForWhatsApp(phone: string): string {
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.startsWith('0')) {
-        const withoutZero = cleanPhone.substring(1);
-        if (withoutZero.length === 9) {
-        return `+593${withoutZero.substring(0, 2)}${withoutZero.substring(2, 5)}${withoutZero.substring(5)}`;
-        }
-    }
-    if (cleanPhone.startsWith('593')) {
-        const number = cleanPhone.substring(3);
-        if (number.length === 9) {
-        return `+593${number.substring(0, 2)}${number.substring(2, 5)}${number.substring(5)}`;
-        }
-    }
-    return phone;
+/** Shows a modal for calling the client via phone or WhatsApp. */
+function showCallModal(phone: string) {
+  const whatsappPhone = formatPhoneForWhatsApp(phone);
+  const html = `<div class="relative">
+    <button id="closeCall" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-55 z-10"><i class="fa fa-times text-lg"></i></button>
+    <div class="text-center">
+      <h3 class="text-lg font-semibold mb-4">Contactar Cliente <i class="fa fa-user"></i></h3>
+      <div class="flex gap-3 justify-center">
+        <button id="callPhone" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75">
+          <i class="fa-solid fa-phone-volume text-3xl text-blue-600"></i><span class="text-sm">Teléfono</span>
+        </button>
+        <button id="callWhatsApp" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75">
+          <i class="fab fa-whatsapp text-4xl text-green-600"></i><span class="text-sm">WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </div>`;
+
+  const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
+  element.querySelector('#closeCall')!.addEventListener('click', close);
+  element.querySelector('#callPhone')!.addEventListener('click', () => {
+    window.open(`tel:${phone}`);
+    close();
+  });
+  element.querySelector('#callWhatsApp')!.addEventListener('click', () => {
+    window.open(`https://wa.me/${whatsappPhone.replace(/\s/g, '')}`);
+    close();
+  });
 }
-    
+
+/** Shows details of an order in a modal. */
+function showOrderDetails(orderId: string, onUpdate: () => void) {
+  const order = OrderRepo.findById(orderId);
+  if (!order) {
+    UI.toast('Pedido no encontrado');
+    return;
+  }
+
+  const food = FoodRepo.findById(order.foodId);
+  const unitPrice = food?.price || 0;
+  const total = unitPrice * order.quantity;
+
+  const html = `<button id="closeDetails" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20"><i class="fa fa-times text-lg"></i></button>
+    <div class="relative max-h-[75vh] overflow-y-auto">
+      <div class="pr-8 p-4">
+        <h3 class="text-xl font-bold mb-4 text-center">Detalles del Pedido <i class="fa-solid fa-file-invoice-dollar fa-lg"></i></h3>
+        <div class="space-y-4">
+          <div class="border-b pb-2">
+            <label class="text-base text-gray-500 font-bold">Cliente:</label>
+            <div class="text-gray-800">${order.fullName}</div>
+          </div>
+          <div class="border-b pb-2">
+            <label class="text-base text-gray-500 font-bold">Hora de entrega:</label>
+            <div class="text-gray-800">${formatTime(order.deliveryTime)}</div>
+          </div>
+          <div class="border-b pb-2">
+            <label class="text-base text-gray-500 font-bold">Dirección:</label>
+            <div class="text-gray-800">${order.deliveryAddress}</div>
+          </div>
+          <div class="border-b pb-2">
+            <label class="text-base text-gray-500 font-bold">Comida:</label>
+            <div class="text-gray-800">${food?.name || 'No encontrado'}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 border-b pb-2">
+            <div>
+              <label class="text-base text-gray-500 font-bold">Cantidad:</label>
+              <div class="text-gray-800">${order.quantity}</div>
+            </div>
+            <div>
+              <label class="text-base text-gray-500 font-bold">Combo:</label>
+              <div class="text-gray-800">${order.combo ? 'Sí' : 'No'}</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 border-b pb-2">
+            <div>
+              <label class="text-base text-gray-500 font-bold">P. unitario:</label>
+              <div class="text-gray-800">${formatCurrency(unitPrice)}</div>
+            </div>
+            <div>
+              <label class="text-base text-gray-500 font-bold">Total:</label>
+              <div class="font-bold text-lg text-green-600">${formatCurrency(total)}</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-4 gap-4">
+          <button id="callFromDetails" data-phone="${order.phone}" class="flex items-center gap-2 px-4 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50">
+            <i class="fa fa-phone"></i><span class="font-bold">Llamar</span>
+          </button>
+          <div class="flex items-center gap-2">
+            <span class="text-base text-gray-500 font-bold">Entregado:</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input id="detailsToggle" data-id="${order.id}" type="checkbox" ${order.delivered ? 'checked' : ''} class="sr-only">
+              <div id="toggleBg" class="toggle-bg-details w-11 h-6 ${order.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative">
+                <div id="toggleDot" class="toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${order.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
+  element.querySelector('#closeDetails')!.addEventListener('click', close);
+  element.querySelector('#callFromDetails')!.addEventListener('click', (e) => showCallModal((e.currentTarget as HTMLElement).dataset.phone!));
+
+  const toggle = element.querySelector('#detailsToggle') as HTMLInputElement;
+
+  const updateToggleVisuals = (isDelivered: boolean) => {
+    const toggleBg = element.querySelector('#toggleBg')!;
+    const toggleDot = element.querySelector('#toggleDot')!;
+    toggleBg.className = `toggle-bg-details w-11 h-6 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative`;
+    toggleDot.className = `toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
+  };
+
+  toggle.addEventListener('change', () => {
+    const currentOrder = OrderRepo.findById(orderId);
+    if (!currentOrder) return;
+    handleDeliveryToggle(currentOrder, toggle, updateToggleVisuals, () => {
+      onUpdate();
+    });
+  });
+}
+
+/** Renders the dashboard screen. */
 export function renderDashboard(container: HTMLElement): void {
-const foods = FoodRepo.getAll();
-const orders = OrderRepo.getSorted();
-const pending = orders.filter((o) => !o.delivered).length;
-const delivered = orders.filter((o) => o.delivered).length;
-const revenue = FoodRepo.totalProfit();
+  const foods = FoodRepo.getAll();
+  const orders = OrderRepo.getSorted().filter((o) => o.state);
+  const pending = orders.filter((o) => !o.delivered).length;
+  const delivered = orders.filter((o) => o.delivered).length;
+  const revenue = FoodRepo.totalProfit();
 
-container.innerHTML = `<section class="space-y-4"> <div class="grid grid-cols-2 gap-3"> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Pedidos pendientes</div> <div class="text-2xl font-semibold">${pending}</div> </div> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Entregas realizadas</div> <div class="text-2xl font-semibold">${delivered}</div> </div> </div> <div class="grid grid-cols-2 gap-3"> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Variedades</div> <div class="text-xl font-semibold">${foods.length}</div> </div> <div class="p-3 bg-white rounded-xl border border-border shadow"> <div class="text-sm text-gray-500">Beneficio total</div> <div class="text-xl font-semibold">${formatCurrency(revenue)}</div> </div> </div> <div class="flex gap-2"> <button id="btnAddOrderQuick" class="flex-1 px-3 py-2 bg-accent text-white rounded-lg">Nuevo pedido</button> <button id="btnAddFoodQuick" class="flex-1 px-3 py-2 border rounded-lg">Nueva comida</button> </div> </section>`;
+  container.innerHTML = `<section class="space-y-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div class="p-3 bg-white rounded-xl border border-border shadow">
+        <div class="text-sm text-gray-500">Pedidos pendientes</div>
+        <div class="text-2xl font-semibold">${pending}</div>
+      </div>
+      <div class="p-3 bg-white rounded-xl border border-border shadow">
+        <div class="text-sm text-gray-500">Entregas realizadas</div>
+        <div class="text-2xl font-semibold">${delivered}</div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="p-3 bg-white rounded-xl border border-border shadow">
+        <div class="text-sm text-gray-500">Variedades</div>
+        <div class="text-xl font-semibold">${foods.length}</div>
+      </div>
+      <div class="p-3 bg-white rounded-xl border border-border shadow">
+        <div class="text-sm text-gray-500">Beneficio total</div>
+        <div class="text-xl font-semibold">${formatCurrency(revenue)}</div>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button id="btnAddOrderQuick" class="flex-1 px-3 py-2 bg-accent text-white rounded-lg">Nuevo pedido</button>
+      <button id="btnAddFoodQuick" class="flex-1 px-3 py-2 border rounded-lg">Nueva comida</button>
+    </div>
+  </section>`;
 
-container.querySelector('#btnAddOrderQuick')?.addEventListener('click', () => {
+  container.querySelector('#btnAddOrderQuick')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('openOrderForm'));
-});
-container.querySelector('#btnAddFoodQuick')?.addEventListener('click', () => {
+  });
+  container.querySelector('#btnAddFoodQuick')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('openFoodForm'));
-});
-}
-    
-export function handleDeliveryToggle(
-    order: Order,
-    toggle: HTMLInputElement,
-    updateVisuals: (isDelivered: boolean) => void,
-    onUpdate: () => void
-    ) {
-    const isChecked = toggle.checked;
+  });
 
-    if (isChecked) {
-        toggle.checked = false;
-        updateVisuals(false);
-        UI.confirm(
-        `🟢 Quiere confirmar la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> ✅ Perteneciente al teléfono <strong>${order.phone}</strong>`,
-        () => {
-            const updatedOrder = { ...order, delivered: true, deliveredAt: new Date().toISOString() };
-            OrderRepo.update(updatedOrder);
-            UI.toast('Pedido marcado como entregado');
-            updateGlobalHeaderState();
-            toggle.checked = true;
-            updateVisuals(true);
-            onUpdate();
-        }
-        );
+  UI.updateHeaderContent;
+}
+
+/** Shows details of a sales record in a modal. */
+function showSalesRecordDetails(record: FoodSaleRecord, food: Food, onBackToHistory: () => void) {
+  const html = `<div class="relative max-h-[90vh] overflow-y-auto">
+    <button id="closeRecordDetails" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20">
+      <i class="fa fa-times text-lg"></i>
+    </button>
+    <div class="pr-8 p-4">
+      <button id="backToHistoryList" class="text-sm text-accent hover:underline mb-4 flex items-center gap-2">
+        <i class="fa fa-arrow-left"></i>Volver a la lista
+      </button>
+      <h3 class="text-xl font-bold mb-4 text-center">Detalles ${record.recordDate}</h3>
+      <div class="space-y-4">
+
+        <div class="border-b pb-2">
+          <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+            <i class="fa fa-bowl-food"></i> Comida:
+          </label>
+          <div class="text-gray-800">${food.name}</div>
+        </div>
+
+        <div class="border-b pb-2">
+          <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+            <i class="fa fa-clock"></i> Horario:
+          </label>
+          <div class="text-gray-800">${formatClockTime(record.startTime)} - ${formatClockTime(record.endTime)}</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 border-b pb-2">
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa-solid fa-boxes-stacked"></i> Stock:
+            </label>
+            <div class="text-gray-800">${record.initialStock}</div>
+          </div>
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa fa-shopping-cart"></i> Vendido:
+            </label>
+            <div class="text-gray-800">${record.quantitySold}</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 border-b pb-2">
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa fa-dollar-sign"></i> Precio:
+            </label>
+            <div class="text-gray-800">${formatCurrency(record.unitPrice)}</div>
+          </div>
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa fa-money-bill"></i> Costo:
+            </label>
+            <div class="text-gray-800">${formatCurrency(record.unitCost)}</div>
+          </div>
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa fa-chart-line"></i> Lucro:
+            </label>
+            <div class="font-bold text-blue-600">${formatCurrency(record.unitPrice - record.unitCost)}</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 border-b pb-2">
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa fa-piggy-bank"></i> Lucro T.:
+            </label>
+            <div class="font-bold text-lg text-blue-600">${formatCurrency((record.unitPrice - record.unitCost) * record.quantitySold)}</div>
+          </div>
+          <div>
+            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
+              <i class="fa fa-coins"></i> Ingresos totales:
+            </label>
+            <div class="font-bold text-lg text-green-600">${formatCurrency(record.quantitySold * record.unitPrice)}</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>`;
+
+
+  const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
+  element.querySelector('#closeRecordDetails')!.addEventListener('click', close);
+  element.querySelector('#backToHistoryList')!.addEventListener('click', () => {
+    close();
+    onBackToHistory();
+  });
+}
+
+/** Opens a modal showing sales history for a food. */
+function openSalesHistoryModal(foodId: string) {
+  const food = FoodRepo.findById(foodId);
+  if (!food) {
+    UI.toast('Comida no encontrada');
+    return;
+  }
+
+  const history = FoodSaleRecordRepo.findByFoodId(foodId);
+  let historyModalRef: { close: () => void; element: HTMLElement } | null = null;
+
+  const showHistoryModal = () => {
+    let listContent;
+    if (history.length === 0) {
+      listContent = `<div class="text-gray-500 text-center py-8 flex flex-col items-center gap-2"><i class="fa fa-inbox text-3xl opacity-50"></i><p>No hay historial de ventas para esta comida.</p></div>`;
     } else {
+      const listItems = history
+        .map((record) => {
+          const totalRevenue = record.quantitySold * record.unitPrice;
+          return `
+            <div class="border-b last:border-b-0">
+              <button data-record-id="${record.id}" class="w-full text-left p-3 hover:bg-gray-50 record-detail-btn transition-colors">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full ${record.isActive ? 'bg-green-500' : 'bg-gray-400'}"></div>
+                    <div>
+                      <div class="font-medium text-gray-900">
+                        <i class="fa fa-calendar-day mr-2 text-gray-400"></i>
+                        ${record.recordDate}
+                      </div>
+                      <div class="text-sm text-gray-500">
+                        ${formatClockTime(record.startTime)} - ${formatClockTime(record.endTime)}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="font-semibold text-gray-900">
+                      Vendidos: <span class="text-gray-600">${record.quantitySold}</span>
+                    </div>
+                    <div class="text-sm text-green-600">
+                      ${formatCurrency(totalRevenue)}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>`;
+        })
+        .join('');
+      listContent = `<div class="bg-white rounded-lg border divide-y">${listItems}</div>`;
+    }
+
+    const historyHtml = `
+      <div class="relative max-h-[80vh] overflow-y-auto">
+        <button id="closeHistoryModal" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20">
+          <i class="fa fa-times text-lg"></i>
+        </button>
+        <div class="pr-8 p-4">
+          <h3 class="text-xl font-bold mb-4 text-center">
+            <i class="fa fa-history mr-2"></i>Historial: ${food.name}
+          </h3>
+          <div class="max-h-96 overflow-y-auto">
+            ${listContent}
+          </div>
+        </div>
+      </div>`;
+
+    historyModalRef = UI.modal(historyHtml, { closeOnBackdropClick: false });
+    historyModalRef.element.querySelector('#closeHistoryModal')!.addEventListener('click', historyModalRef.close);
+
+    historyModalRef.element.querySelectorAll('.record-detail-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const recordId = (e.currentTarget as HTMLElement).dataset.recordId!;
+        const selectedRecord = history.find((r) => r.id === recordId)!;
+        const currentClose = historyModalRef!.close;
+        currentClose();
+        showSalesRecordDetails(selectedRecord, food, showHistoryModal);
+      });
+    });
+  };
+
+  showHistoryModal();
+}
+
+/** Renders the foods screen. */
+export function renderFoods(container: HTMLElement): void {
+  container.innerHTML = `<div class="bg-white rounded-xl p-3 border space-y-3 mb-20">
+    <div class="flex gap-2 items-center">
+      <input id="inputFilterFood" placeholder="Buscar por comida..." class="flex-1 px-3 py-2 border rounded-lg" />
+      <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg hover:bg-green-600 transition-colors">
+        <i class="fa-solid fa-plus fa-lg"></i>
+      </button>
+    </div>
+    <div id="foodsList" class="space-y-3"></div>
+  </div>`;
+
+  const filterInp = container.querySelector('#inputFilterFood') as HTMLInputElement;
+  const foodsListContainer = container.querySelector('#foodsList')!;
+
+  function refreshFoodListView() {
+    const allFoods = FoodRepo.getAll();
+    const filterText = normalizeName(filterInp.value).toLowerCase();
+    const filteredFoods = filterText
+      ? allFoods.filter((food) => normalizeName(food.name).toLowerCase().includes(filterText))
+      : allFoods;
+    renderFoodList(filteredFoods);
+  }
+
+  const renderFoodList = (list: Food[]) => {
+    foodsListContainer.innerHTML = '';
+    if (list.length === 0) {
+      foodsListContainer.innerHTML = `
+        <div class="text-gray-500 text-center py-8">
+          <i class="fa fa-bowl-food text-4xl mb-2 opacity-50"></i>
+          <p>Sin resultados.</p>
+        </div>`;
+      return;
+    }
+
+    list.forEach((f) => {
+      const row = document.createElement('div');
+      row.className = `p-3 bg-gray-50 rounded-lg border hover:shadow-sm transition-shadow ${!f.isActive ? 'opacity-60' : ''}`;
+      row.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-semibold text-xl">${f.name}</div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${f.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+              <i class="fa ${f.isActive ? 'fa-check-circle' : 'fa-times-circle'} mr-1 text-base"></i>
+              ${f.isActive ? 'Activo' : 'Inactivo'}
+            </span>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-lg text-gray-600 mb-3">
+          <div class="flex items-center gap-1">
+            <i class="fa-solid fa-shopping-cart text-blue-500 text-2xl"></i>
+            <span class="font-semibold"><strong>${f.amountSold || 0}</strong></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <i class="fa-solid fa-boxes-stacked text-orange-500 text-2xl"></i>
+            <span class="font-semibold"><strong>${f.stock}</strong></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <i class="fa-solid fa-dollar-sign text-green-500 text-2xl"></i>
+            <span class="font-semibold"><strong>${formatCurrency(f.price)}</strong></span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button data-id="${f.id}" class="salesHistoryBtn flex-1 px-1 py-1 bg-blue-500 text-white rounded flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors font-semibold">
+            <i class="fa fa-history text-lg"></i>
+            Historial
+          </button>
+          <button data-id="${f.id}" class="editFood flex-1 px-1 py-1 bg-yellow-500 text-white rounded flex items-center justify-center gap-2 hover:bg-yellow-600 transition-colors font-semibold">
+            <i class="fa-solid fa-store text-lg"></i>
+            Venta
+          </button>
+        </div>`;
+      foodsListContainer.appendChild(row);
+    });
+
+    foodsListContainer.querySelectorAll<HTMLElement>('.editFood').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        document.dispatchEvent(
+          new CustomEvent('openFoodForm', {
+            detail: { id: (e.currentTarget as HTMLElement).dataset.id! },
+          })
+        );
+      });
+    });
+
+    foodsListContainer.querySelectorAll<HTMLElement>('.salesHistoryBtn').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        const foodId = (e.currentTarget as HTMLElement).dataset.id!;
+        openSalesHistoryModal(foodId);
+      });
+    });
+  };
+
+  filterInp.addEventListener('input', refreshFoodListView);
+  container.querySelector('#btnAddFood')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('openFoodForm'));
+  });
+
+  document.addEventListener('refreshViews', refreshFoodListView);
+  refreshFoodListView();
+}
+
+/** Renders the settings screen. */
+export function renderSettings(container: HTMLElement): void {
+  const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}') || {};
+  const gap = meta.deliveryGapMinutes ?? 15;
+  const dark = meta.darkMode ?? false;
+
+  container.innerHTML = `<div class="bg-white rounded-xl p-3 border space-y-3">
+    <h2 class="text-lg font-semibold">Ajustes</h2>
+    <label class="flex items-center gap-2">
+      <span class="text-sm text-gray-600 w-48">Brecha de entrega (minutos)</span>
+      <input id="inputGap" type="number" min="0" value="${gap}" class="px-3 py-2 border rounded-lg w-28" />
+    </label>
+    <label class="flex items-center gap-2">
+      <span class="text-sm text-gray-600 w-48">Modo oscuro</span>
+      <input id="toggleDark" type="checkbox" ${dark ? 'checked' : ''} />
+    </label>
+    <div class="flex gap-2 justify-end">
+      <button id="btnClearAudit" class="px-3 py-2 border rounded">Limpiar logs</button>
+    </div>
+  </div>`;
+
+  const gapInput = container.querySelector('#inputGap') as HTMLInputElement | null;
+  gapInput?.addEventListener('change', (e) => {
+    const v = Number((e.currentTarget as HTMLInputElement).value || 0);
+    const m = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
+    m.deliveryGapMinutes = v;
+    localStorage.setItem('fd_meta_v1', JSON.stringify(m));
+    UI.toast('Brecha actualizada');
+  });
+
+  const toggleDark = container.querySelector('#toggleDark') as HTMLInputElement | null;
+  toggleDark?.addEventListener('change', (e) => {
+    const on = (e.currentTarget as HTMLInputElement).checked;
+    const m = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
+    m.darkMode = on;
+    localStorage.setItem('fd_meta_v1', JSON.stringify(m));
+    if (on) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    UI.toast(`Modo ${on ? 'oscuro' : 'claro'} activado`);
+  });
+
+  const clearBtn = container.querySelector('#btnClearAudit') as HTMLButtonElement | null;
+  clearBtn?.addEventListener('click', () => {
+    localStorage.removeItem('fd_audit_v1');
+    UI.toast('Logs limpiados');
+  });
+}
+
+/** Handles toggling delivery status with confirmation. */
+export function handleDeliveryToggle(
+  order: Order,
+  toggle: HTMLInputElement,
+  updateVisuals: (isDelivered: boolean) => void,
+  onUpdate: () => void
+) {
+  const isChecked = toggle.checked;
+
+  if (isChecked) {
+    toggle.checked = false;
+    updateVisuals(false);
+    UI.confirm(
+      `🟢 Quiere confirmar la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> ✅ Perteneciente al teléfono <strong>${order.phone}</strong>`,
+      () => {
+        const updatedOrder = { ...order, delivered: true, deliveredAt: new Date().toISOString() };
+        OrderRepo.update(updatedOrder);
+        UI.toast('Pedido marcado como entregado');
+        updateGlobalHeaderState();
         toggle.checked = true;
         updateVisuals(true);
-    
-        UI.confirm(
-        `🔴 Quiere revertir la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> Perteneciente al teléfono <strong>${order.phone}</strong> 〽️`,
-        () => {
-            const updatedOrder = { ...order, delivered: false, deliveredAt: null };
-            OrderRepo.update(updatedOrder);
-            UI.toast('Entrega revertida');
-            updateGlobalHeaderState();
-            toggle.checked = false;
-            updateVisuals(false);
-            onUpdate();
-        }
-        );
-    
-    }
-    }
-        
+        onUpdate();
+      }
+    );
+  } else {
+    toggle.checked = true;
+    updateVisuals(true);
+
+    UI.confirm(
+      `🔴 Quiere revertir la entrega al Cliente <strong>${order.fullName}</strong> ❓ <br> Perteneciente al teléfono <strong>${order.phone}</strong> 〽️`,
+      () => {
+        const updatedOrder = { ...order, delivered: false, deliveredAt: null };
+        OrderRepo.update(updatedOrder);
+        UI.toast('Entrega revertida');
+        updateGlobalHeaderState();
+        toggle.checked = false;
+        updateVisuals(false);
+        onUpdate();
+      }
+    );
+
+  }
+}
+
+/** Renders the clients screen. */
 export function renderClients(container: HTMLElement): void {
-container.innerHTML = `<div class="bg-white rounded-xl border p-3 space-y-3 pb-20"> <div class="flex gap-2 items-center"> <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border rounded-lg" inputmode="text" /> <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button> </div> <div id="ordersList" class="space-y-2"></div> </div>`;
+  container.innerHTML = `<div class="bg-white rounded-xl p-3 border space-y-3 mb-20"> <div class="flex gap-2 items-center"> <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border rounded-lg" inputmode="text" /> <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button> </div> <div id="ordersList" class="space-y-2"></div> </div>`;
 
-const filterInp = container.querySelector('#inputFilterPhone') as HTMLInputElement;
-const ordersListContainer = container.querySelector('#ordersList')!;
+  const filterInp = container.querySelector('#inputFilterPhone') as HTMLInputElement;
+  const ordersListContainer = container.querySelector('#ordersList')!;
 
-function refreshListView() {
+  function refreshListView() {
     const list = OrderRepo.getSorted();
     const filterText = filterInp.value.toLowerCase().trim();
 
     if (!filterText) {
-    renderList(list);
-    return;
+      renderList(list);
+      return;
     }
 
     const searchablePhoneTerm = getSearchablePhone(filterText);
 
     const filtered = list.filter(order => {
-    const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
-    
-    let phoneMatch = false;
-    if (searchablePhoneTerm.length > 0) {
+      const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
+      
+      let phoneMatch = false;
+      if (searchablePhoneTerm.length > 0) {
         const orderPhoneAsSearchable = getSearchablePhone(order.phone);
         phoneMatch = orderPhoneAsSearchable.includes(searchablePhoneTerm);
-    }
-    
-    return nameMatch || phoneMatch;
+      }
+      
+      return nameMatch || phoneMatch;
     });
 
     renderList(filtered);
-}
+  }
 
-const renderList = (list: Order[]) => {
+  const renderList = (list: Order[]) => {
     ordersListContainer.innerHTML = '';
     if (!list.length) {
-    ordersListContainer.innerHTML = `<div class="text-gray-500 text-center py-4">Sin resultados o Prueba con los últimos 9 dígitos del teléfono.</div>`;
-    return;
+      ordersListContainer.innerHTML = `
+        <div class="text-gray-500 text-center py-8">
+          <i class="fa-solid fa-bag-shopping text-4xl mb-2 opacity-50"></i>
+          <p>Sin resultados o los últimos 9 dígitos telefónico.</p>
+        </div>`;
+      return;
     }
 
     list.forEach(o => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'p-3 bg-gray-50 rounded-lg border';
-    wrapper.innerHTML = `
+      const wrapper = document.createElement('div');
+      wrapper.className = 'p-3 bg-gray-50 rounded-lg border';
+      wrapper.innerHTML = `
         <div class="font-bold text-xl flex items-center"><i class="fa fa-user mr-2"></i> ${o.fullName}</div>
         <div class="text-base text-gray-600 mt-2 flex items-center">
         <i class="fa fa-clock mr-2"></i><span class="font-semibold">Hora de entrega:</span>&nbsp;${new Date(o.deliveryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace('AM', 'a. m.').replace('PM', 'p. m.')}
@@ -164,180 +619,41 @@ const renderList = (list: Order[]) => {
         </div>
         </div>
     `;
-    ordersListContainer.appendChild(wrapper);
+      ordersListContainer.appendChild(wrapper);
     });
 
     ordersListContainer.querySelectorAll<HTMLInputElement>('.deliveredToggle').forEach(inp => {
-    inp.addEventListener('change', e => {
+      inp.addEventListener('change', e => {
         const toggle = e.currentTarget as HTMLInputElement;
         const id = toggle.dataset.id!;
         const order = OrderRepo.findById(id);
         if (order) {
-            const updateVisuals = (isDelivered: boolean) => {
+          const updateVisuals = (isDelivered: boolean) => {
             const bg = toggle.nextElementSibling!;
             const dot = bg.firstElementChild!;
             bg.className = `toggle-bg w-11 h-6 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full`;
             dot.className = `toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
-            };
-            handleDeliveryToggle(order, toggle, updateVisuals, refreshListView);
+          };
+          handleDeliveryToggle(order, toggle, updateVisuals, refreshListView);
         }
-    });
-    });
-
-    ordersListContainer.querySelectorAll<HTMLElement>('.callBtn').forEach(btn => btn.addEventListener('click', e => {
-    showCallModal((e.currentTarget as HTMLElement).dataset.phone!);
-    }));
-    ordersListContainer.querySelectorAll<HTMLElement>('.viewOrder').forEach(btn => btn.addEventListener('click', e => {
-    showOrderDetails((e.currentTarget as HTMLElement).dataset.id!, refreshListView);
-    }));
-    ordersListContainer.querySelectorAll<HTMLElement>('.editOrder').forEach(btn => btn.addEventListener('click', e => {
-    document.dispatchEvent(new CustomEvent('openOrderForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
-    }));
-
-};
-
-filterInp.addEventListener('input', refreshListView);
-
-container.querySelector('#btnAddOrder')?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('openOrderForm')));
-
-refreshListView();
-}
-function showCallModal(phone: string) {
-    const whatsappPhone = formatPhoneForWhatsApp(phone);
-    const html = `<div class="text-center"> <h3 class="text-lg font-semibold mb-4">Contactar Cliente <i class="fa fa-user"></i></h3> <div class="flex gap-3 justify-center"> <button id="callPhone" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75"> <i class="fa-solid fa-phone-volume text-3xl text-blue-600"></i><span class="text-sm">Teléfono</span> </button> <button id="callWhatsApp" class="flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:bg-gray-75"> <i class="fab fa-whatsapp text-4xl text-green-600"></i><span class="text-sm">WhatsApp</span> </button> </div> </div>`;
-
-    const { close, element } = UI.modal(html);
-    element.querySelector('#callPhone')!.addEventListener('click', () => { window.open(`tel:${phone}`); close(); });
-    element.querySelector('#callWhatsApp')!.addEventListener('click', () => { window.open(`https://wa.me/${whatsappPhone.replace(/\s/g, '')}`); close(); });
-}
-
-function showOrderDetails(orderId: string, onUpdate: () => void) {
-const order = OrderRepo.findById(orderId);
-if (!order) {
-UI.toast('Pedido no encontrado');
-return;
-}
-    
-const food = FoodRepo.findById(order.foodId);
-const unitPrice = food?.price || 0;
-const total = unitPrice * order.quantity;
-    
-const deliveryTimeFormatted = new Date(order.deliveryTime)
-.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: true })
-.replace('AM', 'a. m.')
-.replace('PM', 'p. m.');
-
-const html = `<button id="closeDetails" class="absolute top-1 right-1 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"> <i class="fa fa-times text-lg"></i> </button> <div class="relative max-h-[80vh] overflow-y-auto"> <div class="pr-8"> <h3 class="text-xl font-bold mb-4 text-center">Detalles del Pedido <i class="fa-solid fa-file-invoice-dollar fa-lg"></i></h3> <div class="space-y-4"> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Cliente:</label> <div class="text-gray-800">${order.fullName}</div> </div> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Hora de entrega:</label> <div class="text-gray-800">${deliveryTimeFormatted}</div> </div> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Dirección:</label> <div class="text-gray-800">${order.deliveryAddress}</div> </div> <div class="border-b pb-2"> <label class="text-base text-gray-500 font-bold">Comida:</label> <div class="text-gray-800">${food?.name || 'No encontrado'}</div> </div> <div class="grid grid-cols-2 gap-4 border-b pb-2"> <div> <label class="text-base text-gray-500 font-bold">Cantidad:</label> <div class="text-gray-800">${order.quantity}</div> </div> <div> <label class="text-base text-gray-500 font-bold">Combo:</label> <div class="text-gray-800">${order.combo ? 'Sí' : 'No'}</div> </div> </div> <div class="grid grid-cols-2 gap-4 border-b pb-2"> <div> <label class="text-base text-gray-500 font-bold">P. unitario:</label> <div class="text-gray-800">${formatCurrency(unitPrice)}</div> </div> <div> <label class="text-base text-gray-500 font-bold">Total:</label> <div class="font-bold text-lg text-green-600">${formatCurrency(total)}</div> </div> </div> </div> <div class="flex justify-between items-center mt-6"> <button id="callFromDetails" data-phone="${order.phone}" class="flex items-center gap-2 px-4 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50"> <i class="fa fa-phone"></i><span class="font-bold">Llamar</span> </button> <div class="flex items-center gap-2"> <span class="text-base text-gray-500 font-bold">Entregado:</span> <label class="relative inline-flex items-center cursor-pointer"> <input id="detailsToggle" data-id="${order.id}" type="checkbox" ${order.delivered ? 'checked' : ''} class="sr-only"> <div id="toggleBg" class="toggle-bg-details w-11 h-6 ${order.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative"> <div id="toggleDot" class="toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${order.delivered ? 'translate-x-5' : 'translate-x-0'}"></div> </div> </label> </div> </div> </div> </div>`;
-
-const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
-element.querySelector('#closeDetails')!.addEventListener('click', close);
-element.querySelector('#callFromDetails')!.addEventListener('click', e => showCallModal((e.currentTarget as HTMLElement).dataset.phone!));
-
-const toggle = element.querySelector('#detailsToggle') as HTMLInputElement;
-
-const updateToggleVisuals = (isDelivered: boolean) => {
-    const toggleBg = element.querySelector('#toggleBg')!;
-    const toggleDot = element.querySelector('#toggleDot')!;
-    if (isDelivered) {
-    toggleBg.className = 'toggle-bg-details w-11 h-6 bg-green-600 rounded-full relative';
-    toggleDot.className = 'toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-5';
-    } else {
-    toggleBg.className = 'toggle-bg-details w-11 h-6 bg-red-500 rounded-full relative';
-    toggleDot.className = 'toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform translate-x-0';
-    }
-};
-
-toggle.addEventListener('change', e => {
-    const currentOrder = OrderRepo.findById(orderId);
-    if (!currentOrder) return;
-
-    handleDeliveryToggle(currentOrder, toggle, updateToggleVisuals, () => {
-    onUpdate();
-    close(); 
-    });
-});
-}
-    
-export function renderFoods(container: HTMLElement): void {
-  const foods = FoodRepo.getAll();
-  container.innerHTML = `
-    <div class="bg-white rounded-xl p-3 border space-y-3">
-        <div class="flex justify-between items-center">
-            <h2 class="text-lg font-semibold">Comidas</h2>
-            <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg"><i class="fa-solid fa-plus fa-lg"></i></button>
-        </div>
-        <div id="foodsList" class="space-y-2"></div>
-    </div>`;
-
-  const target = container.querySelector('#foodsList')!;
-  if (!foods || foods.length === 0) {
-    target.innerHTML = `<div class="text-gray-500">No hay comidas</div>`;
-  } else {
-    target.innerHTML = '';
-    foods.forEach((f) => {
-      const row = document.createElement('div');
-      row.className = `p-3 bg-gray-50 rounded-lg border flex justify-between items-center ${!f.isActive ? 'opacity-50' : ''}`;
-      row.innerHTML = `
-        <div>
-          <div class="font-semibold">${f.name} <span class="text-sm font-bold ${f.isActive ? 'text-green-600' : 'text-red-500'}">(${f.isActive ? 'Activo' : 'Inactivo'})</span></div>
-          <div class="text-sm text-gray-600">Vendidos (sesión actual): ${f.amountSold || 0} &middot; Stock: ${f.stock} &middot; Precio: ${formatCurrency(f.price)}</div>
-        </div>
-        <div class="flex gap-2">
-            <button data-id="${f.id}" class="salesHistoryBtn btn px-3 py-1 border rounded text-sm bg-blue-500 text-white hover:bg-blue-600">Historial</button>
-            <button data-id="${f.id}" class="editFood btn px-3 py-1 border rounded text-sm">Editar</button>
-        </div>`;
-      target.appendChild(row);
-    });
-
-    target.querySelectorAll<HTMLElement>('.editFood').forEach(b => {
-      b.addEventListener('click', (e) => {
-        document.dispatchEvent(new CustomEvent('openFoodForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
       });
     });
 
-    target.querySelectorAll<HTMLElement>('.salesHistoryBtn').forEach(b => {
-        b.addEventListener('click', (e) => {
-            document.dispatchEvent(new CustomEvent('openSalesHistory', { detail: { foodId: (e.currentTarget as HTMLElement).dataset.id! }}));
-        });
-    });
-  }
+    ordersListContainer.querySelectorAll<HTMLElement>('.callBtn').forEach(btn => btn.addEventListener('click', e => {
+      showCallModal((e.currentTarget as HTMLElement).dataset.phone!);
+    }));
+    ordersListContainer.querySelectorAll<HTMLElement>('.viewOrder').forEach(btn => btn.addEventListener('click', e => {
+      showOrderDetails((e.currentTarget as HTMLElement).dataset.id!, refreshListView);
+    }));
+    ordersListContainer.querySelectorAll<HTMLElement>('.editOrder').forEach(btn => btn.addEventListener('click', e => {
+      document.dispatchEvent(new CustomEvent('openOrderForm', { detail: { id: (e.currentTarget as HTMLElement).dataset.id! } }));
+    }));
 
-  container.querySelector('#btnAddFood')?.addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('openFoodForm'));
-  });
-}
+  };
 
+  filterInp.addEventListener('input', refreshListView);
 
-export function renderSettings(container: HTMLElement): void {
-  const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}') || {};
-  const gap = meta.deliveryGapMinutes ?? 15;
-  const dark = meta.darkMode ?? false;
+  container.querySelector('#btnAddOrder')?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('openOrderForm')));
 
-  container.innerHTML = `<div class="bg-white rounded-xl p-3 border space-y-3"> <h2 class="text-lg font-semibold">Ajustes</h2> <label class="flex items-center gap-2"> <span class="text-sm text-gray-600 w-48">Brecha de entrega (minutos)</span> <input id="inputGap" type="number" min="0" value="${gap}" class="px-3 py-2 border rounded-lg w-28" /> </label> <label class="flex items-center gap-2"> <span class="text-sm text-gray-600 w-48">Modo oscuro</span> <input id="toggleDark" type="checkbox" ${dark ? 'checked' : ''} /> </label> <div class="flex gap-2 justify-end"> <button id="btnClearAudit" class="px-3 py-2 border rounded">Limpiar logs</button> </div> </div>`;
-
-  const gapInput = container.querySelector('#inputGap') as HTMLInputElement | null;
-  gapInput?.addEventListener('change', (e) => {
-    const v = Number((e.currentTarget as HTMLInputElement).value || 0);
-    const m = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
-    m.deliveryGapMinutes = v;
-    localStorage.setItem('fd_meta_v1', JSON.stringify(m));
-    UI.toast('Brecha actualizada');
-  });
-
-  const toggleDark = container.querySelector('#toggleDark') as HTMLInputElement | null;
-  toggleDark?.addEventListener('change', (e) => {
-    const on = (e.currentTarget as HTMLInputElement).checked;
-    const m = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
-    m.darkMode = on;
-    localStorage.setItem('fd_meta_v1', JSON.stringify(m));
-    if (on) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    UI.toast(`Modo ${on ? 'oscuro' : 'claro'} activado`);
-  });
-
-  const clearBtn = container.querySelector('#btnClearAudit') as HTMLButtonElement | null;
-  clearBtn?.addEventListener('click', () => {
-    localStorage.removeItem('fd_audit_v1');
-    UI.toast('Logs limpiados');
-  });
+  refreshListView();
 }

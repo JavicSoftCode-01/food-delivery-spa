@@ -1,3 +1,6 @@
+/* Responsable: estilos globales y pequeñas correcciones visuales para la app. */
+
+/* Variables */
 :root {
   --radius: 12px;
 }
@@ -78,7 +81,6 @@
 .pulse-animation {
   animation: pulse-red 2s infinite;
 }
-
 
 /* Fix para que el toast aparezca por encima de los modales */
 #toastRoot {

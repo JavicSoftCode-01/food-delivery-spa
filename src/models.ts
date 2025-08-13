@@ -1,7 +1,7 @@
 // src/models.ts
 export type ID = string;
 
-// NUEVO: Modelo para el historial de ventas de cada comida por fecha.
+// Modelo para el historial de ventas de cada comida por fecha.
 export interface FoodSaleRecord {
   id: ID;
   foodId: ID;
