@@ -22,10 +22,13 @@ type Screen = 'dashboard' | 'clients' | 'foods' | 'settings';
 let currentScreen: Screen = 'dashboard';
 /** Intervalo de countdown (si existe). */
 let countdownIntervalId: number | undefined;
+
 /** Segundos restantes para el cronómetro de archivado. */
 let remainingSeconds = 60;
 
-/** Export para que otros módulos actualicen el header global. */
+/** Flag para saber si ya se mostró el botón de archivar */
+let archiveButtonShown = false;
+
 export function updateGlobalHeaderState(): void {
   if (countdownIntervalId) {
     clearInterval(countdownIntervalId);
@@ -38,18 +41,24 @@ export function updateGlobalHeaderState(): void {
 
   if (pendingCount > 0) {
     UI.updateHeaderContent(`<div class="pulse-animation bg-red-500 text-white text-base font-bold w-8 h-8 flex items-center justify-center rounded-full">${pendingCount}</div>`);
-    remainingSeconds = 60;
+    // Solo resetear si no había pedidos entregados antes
+    if (deliveredCount === 0) {
+      remainingSeconds = 60;
+      archiveButtonShown = false;
+    }
   } else if (deliveredCount > 0) {
     startCountdown();
   } else {
     UI.updateHeaderContent('');
     remainingSeconds = 60;
+    archiveButtonShown = false;
   }
 }
 
 /** Inicia el conteo regresivo y muestra botón de archivar al finalizar. */
 function startCountdown(): void {
   const showArchiveButton = () => {
+    archiveButtonShown = true;
     const buttonHtml = `<button id="archive-btn" title="Archivar pedidos entregados" class="bg-red-500 text-white w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-600"><i class="fa fa-trash-can fa-lg"></i></button>`;
     if (currentScreen === 'clients') {
       UI.updateHeaderContent(buttonHtml);
@@ -58,6 +67,7 @@ function startCountdown(): void {
         btn.addEventListener('click', () => {
           UI.confirm('¿Deseas archivar todos los pedidos ya entregados?', () => {
             OrderRepo.archiveDeliveredOrders();
+            archiveButtonShown = false; // Resetear el flag después de archivar
             renderCurrent();
           });
         }, { once: true });
@@ -74,6 +84,12 @@ function startCountdown(): void {
     if (currentScreen === 'clients') UI.updateHeaderContent(timerHtml);
     else UI.updateHeaderContent('');
   };
+
+  // Si ya se mostró el botón, mostrarlo directamente sin countdown
+  if (archiveButtonShown) {
+    showArchiveButton();
+    return;
+  }
 
   if (remainingSeconds <= 0) {
     showArchiveButton();
