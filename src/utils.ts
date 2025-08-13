@@ -189,3 +189,4 @@ export function formatClockTime(time: string): string {
   const hourStr = h < 10 ? '0' + h : h.toString();
   return `${hourStr}:${minute} ${suffix}`;
 }
+

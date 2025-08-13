@@ -176,85 +176,92 @@ export function renderDashboard(container: HTMLElement): void {
 
 /** Shows details of a sales record in a modal. */
 function showSalesRecordDetails(record: FoodSaleRecord, food: Food, onBackToHistory: () => void) {
-  const html = `<div class="relative max-h-[90vh] overflow-y-auto">
-    <button id="closeRecordDetails" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20">
-      <i class="fa fa-times text-lg"></i>
+const html = `<div class="relative max-h-[90vh] overflow-y-auto">
+  <button id="closeRecordDetails" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20">
+    <i class="fa fa-times text-lg"></i>
+  </button>
+  <div class="pr-8 p-4">
+    <button id="backToHistoryList" class="text-sm text-accent hover:underline mb-4 flex items-center gap-2">
+      <i class="fa fa-arrow-left"></i>Volver a la lista
     </button>
-    <div class="pr-8 p-4">
-      <button id="backToHistoryList" class="text-sm text-accent hover:underline mb-4 flex items-center gap-2">
-        <i class="fa fa-arrow-left"></i>Volver a la lista
-      </button>
-      <h3 class="text-xl font-bold mb-4 text-center">Detalles ${record.recordDate}</h3>
-      <div class="space-y-4">
+    <h3 class="text-2xl font-bold mb-4 text-center">Detalles ${record.recordDate}</h3>
+    <div class="space-y-4">
 
-        <div class="border-b pb-2">
-          <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-            <i class="fa fa-bowl-food"></i> Comida:
-          </label>
-          <div class="text-gray-800">${food.name}</div>
-        </div>
-
-        <div class="border-b pb-2">
-          <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-            <i class="fa fa-clock"></i> Horario:
-          </label>
-          <div class="text-gray-800">${formatClockTime(record.startTime)} - ${formatClockTime(record.endTime)}</div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 border-b pb-2">
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa-solid fa-boxes-stacked"></i> Stock:
-            </label>
-            <div class="text-gray-800">${record.initialStock}</div>
-          </div>
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa fa-shopping-cart"></i> Vendido:
-            </label>
-            <div class="text-gray-800">${record.quantitySold}</div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-4 border-b pb-2">
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa fa-dollar-sign"></i> Precio:
-            </label>
-            <div class="text-gray-800">${formatCurrency(record.unitPrice)}</div>
-          </div>
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa fa-money-bill"></i> Costo:
-            </label>
-            <div class="text-gray-800">${formatCurrency(record.unitCost)}</div>
-          </div>
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa fa-chart-line"></i> Lucro:
-            </label>
-            <div class="font-bold text-blue-600">${formatCurrency(record.unitPrice - record.unitCost)}</div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 border-b pb-2">
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa fa-piggy-bank"></i> Lucro T.:
-            </label>
-            <div class="font-bold text-lg text-blue-600">${formatCurrency((record.unitPrice - record.unitCost) * record.quantitySold)}</div>
-          </div>
-          <div>
-            <label class="flex items-center gap-2 text-base text-gray-500 font-bold">
-              <i class="fa fa-coins"></i> Ingresos totales:
-            </label>
-            <div class="font-bold text-lg text-green-600">${formatCurrency(record.quantitySold * record.unitPrice)}</div>
-          </div>
-        </div>
-
+      <div class="border-b pb-2">
+        <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+          <i class="fa fa-bowl-food"></i> Comida:
+        </label>
+        <div class="text-gray-900 text-lg">${food.name}</div>
       </div>
+
+      <div class="border-b pb-2">
+        <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+          <i class="fa fa-clock"></i> Horario:
+        </label>
+        <div class="text-gray-900 text-lg">${formatClockTime(record.startTime)} - ${formatClockTime(record.endTime)}</div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 border-b pb-2">
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa-solid fa-boxes-stacked"></i> Stock:
+          </label>
+          <div class="text-gray-900 text-lg flex items-center justify-center h-full -mt-2">${record.initialStock}</div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa fa-shopping-cart"></i> Vend.:
+          </label>
+          <div class="text-gray-900 text-lg flex items-center justify-center h-full -mt-2">${record.quantitySold}</div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa-solid fa-boxes-stacked"></i> Resto:
+          </label>
+          <div class="text-gray-900 text-lg flex items-center justify-center h-full -mt-2">${(record.initialStock - record.quantitySold)}</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 border-b pb-2">
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa fa-dollar-sign"></i> Precio:
+          </label>
+          <div class="text-gray-900 text-lg flex items-center justify-center h-full -mt-2">${formatCurrency(record.unitPrice)}</div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa fa-money-bill"></i> Costo:
+          </label>
+          <div class="text-gray-900 text-lg flex items-center justify-center h-full -mt-2">${formatCurrency(record.unitCost)}</div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa fa-chart-line"></i> Lucro:
+          </label>
+          <div class="font-bold text-blue-700 text-lg flex items-center justify-center h-full -mt-2">${formatCurrency(record.unitPrice - record.unitCost)}</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 border-b pb-2">
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa fa-piggy-bank"></i> Lucro T.:
+          </label>
+          <div class="font-bold text-blue-700 text-xl flex h-full -mt-1">${formatCurrency((record.unitPrice - record.unitCost) * record.quantitySold)}</div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-lg text-gray-600 font-semibold">
+            <i class="fa fa-coins"></i> Total:
+          </label>
+          <div class="font-bold text-green-700 text-xl flex h-full -mt-1">${formatCurrency(record.quantitySold * record.unitPrice)}</div>
+        </div>
+      </div>
+
     </div>
-  </div>`;
+  </div>
+</div>`;
+
 
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
@@ -450,52 +457,142 @@ export function renderFoods(container: HTMLElement): void {
   refreshFoodListView();
 }
 
-/** Renders the settings screen. */
 export function renderSettings(container: HTMLElement): void {
-  const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}') || {};
+  // Leer meta actual
+  const metaRaw = localStorage.getItem('fd_meta_v1') || '{}';
+  let meta: { deliveryGapMinutes?: number; darkMode?: boolean } = {};
+  try { meta = JSON.parse(metaRaw) || {}; } catch { meta = {}; }
+
   const gap = meta.deliveryGapMinutes ?? 15;
-  const dark = meta.darkMode ?? false;
+  const dark = !!meta.darkMode;
 
-  container.innerHTML = `<div class="bg-white rounded-xl p-3 border space-y-3">
-    <h2 class="text-lg font-semibold">Ajustes</h2>
-    <label class="flex items-center gap-2">
-      <span class="text-sm text-gray-600 w-48">Brecha de entrega (minutos)</span>
-      <input id="inputGap" type="number" min="0" value="${gap}" class="px-3 py-2 border rounded-lg w-28" />
-    </label>
-    <label class="flex items-center gap-2">
-      <span class="text-sm text-gray-600 w-48">Modo oscuro</span>
-      <input id="toggleDark" type="checkbox" ${dark ? 'checked' : ''} />
-    </label>
-    <div class="flex gap-2 justify-end">
-      <button id="btnClearAudit" class="px-3 py-2 border rounded">Limpiar logs</button>
+  // HTML con diseño tipo "configuración/icono" y toggle interactivo
+ container.innerHTML = `
+    <div class="bg-white rounded-xl p-4 border space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-16 h-12 rounded-lg bg-gradient-to-br from-yellow-100 to-yellow-50 flex items-center justify-center text-yellow-600 shadow-sm">
+          <i class="fa fa-gear text-2xl"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold">Ajustes</h2>
+          <p class="text-sm text-gray-500">Personaliza la configuración del sistema.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+        <!-- Sección Intervalo -->
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl">
+              <i class="fa-solid fa-clock fa-lg"></i>
+            </div>
+            <div>
+              <div class="text-lg font-medium">Intervalo</div>
+              <div class="text-sm text-gray-500">De entrega</div>
+            </div>
+          </div>
+          <div>
+            <input id="inputGap" type="number" min="0" value="${gap}" 
+                   class="px-3 py-2 border rounded-lg w-20 text-center" />
+          </div>
+        </div>
+
+        <!-- Sección Modo Oscuro -->
+        <div class="flex items-center justify-between md:justify-end gap-3">
+          <div class="flex items-center gap-3">
+            <div id="themeIcon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl">
+              <i class="${dark ? 'fa fa-moon fa-lg' : 'fa fa-sun fa-lg'}"></i>
+            </div>
+            <div>
+              <div class="text-lg font-medium">Modo</div>
+              <div class="text-sm text-gray-500">Oscuro o Claro</div>
+            </div>
+          </div>
+
+          <div>
+            <button id="themeToggle" aria-pressed="${dark}" title="${dark ? 'Desactivar modo oscuro' : 'Activar modo oscuro'}" class="toggle-btn inline-flex items-center gap-2 px-3 py-2 rounded-full border">
+              <span id="sunIcon" class="text-yellow-500 ${dark ? 'opacity-40' : 'opacity-100'}"><i class="fa fa-sun fa-lg"></i></span>
+              <span id="slider" class="w-10 h-6 rounded-full flex items-center p-1 ${dark ? 'justify-end bg-gray-700' : 'justify-start bg-gray-200'}">
+                <span id="dot" class="w-4 h-4 bg-white rounded-full shadow"></span>
+              </span>
+              <span id="moonIcon" class="text-indigo-600 ${dark ? 'opacity-100' : 'opacity-40'}"><i class="fa fa-moon fa-lg"></i></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!--<div class="flex justify-end gap-2 pt-2">
+        <button id="btnClearAudit" class="px-3 py-2 border rounded">Limpiar logs</button>
+      </div>-->
     </div>
-  </div>`;
+  `;
 
+  // Referencias
   const gapInput = container.querySelector('#inputGap') as HTMLInputElement | null;
-  gapInput?.addEventListener('change', (e) => {
+  const themeToggle = container.querySelector('#themeToggle') as HTMLButtonElement | null;
+  const themeIcon = container.querySelector('#themeIcon') as HTMLElement | null;
+  const sunIcon = container.querySelector('#sunIcon') as HTMLElement | null;
+  const moonIcon = container.querySelector('#moonIcon') as HTMLElement | null;
+  const slider = container.querySelector('#slider') as HTMLElement | null;
+  const dot = container.querySelector('#dot') as HTMLElement | null;
+  const clearBtn = container.querySelector('#btnClearAudit') as HTMLButtonElement | null;
+
+  // Aplica modo oscuro en DOM y persiste
+  const applyDarkMode = (isDark: boolean) => {
+    if (isDark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+
+    // actualizar iconos/estado visual
+    if (themeIcon) {
+      themeIcon.innerHTML = `<i class="${isDark ? 'fa-solid fa-cloud-moon fa-lg' : 'fa-solid fa-cloud-sun fa-lg'}"></i>`;
+    }
+    if (sunIcon) sunIcon.style.opacity = isDark ? '0.4' : '1';
+    if (moonIcon) moonIcon.style.opacity = isDark ? '1' : '0.4';
+    if (slider) {
+      slider.className = `w-10 h-6 rounded-full flex items-center p-1 ${isDark ? 'justify-end bg-gray-700' : 'justify-start bg-gray-200'}`;
+    }
+    if (dot) dot.style.transform = isDark ? 'translateX(0)' : 'translateX(0)';
+
+    // persistir meta
+    const currentMetaRaw = localStorage.getItem('fd_meta_v1') || '{}';
+    let currentMeta: any = {};
+    try { currentMeta = JSON.parse(currentMetaRaw) || {}; } catch { currentMeta = {}; }
+    currentMeta.darkMode = !!isDark;
+    localStorage.setItem('fd_meta_v1', JSON.stringify(currentMeta));
+  };
+
+  // Handlers
+  const onGapChange = (e: Event) => {
     const v = Number((e.currentTarget as HTMLInputElement).value || 0);
-    const m = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
+    const mRaw = localStorage.getItem('fd_meta_v1') || '{}';
+    let m: any = {};
+    try { m = JSON.parse(mRaw) || {}; } catch { m = {}; }
     m.deliveryGapMinutes = v;
     localStorage.setItem('fd_meta_v1', JSON.stringify(m));
     UI.toast('Brecha actualizada');
-  });
+  };
 
-  const toggleDark = container.querySelector('#toggleDark') as HTMLInputElement | null;
-  toggleDark?.addEventListener('change', (e) => {
-    const on = (e.currentTarget as HTMLInputElement).checked;
-    const m = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
-    m.darkMode = on;
-    localStorage.setItem('fd_meta_v1', JSON.stringify(m));
-    if (on) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    UI.toast(`Modo ${on ? 'oscuro' : 'claro'} activado`);
-  });
+  const onThemeToggle = () => {
+    const current = !!(JSON.parse(localStorage.getItem('fd_meta_v1') || '{}').darkMode);
+    const next = !current;
+    applyDarkMode(next);
+    UI.toast(`Modo ${next ? 'oscuro' : 'claro'} activado`);
+    // actualizar header/global state si es necesario
+    updateGlobalHeaderState();
+  };
 
-  const clearBtn = container.querySelector('#btnClearAudit') as HTMLButtonElement | null;
-  clearBtn?.addEventListener('click', () => {
+  const onClearLogs = () => {
     localStorage.removeItem('fd_audit_v1');
     UI.toast('Logs limpiados');
-  });
+  };
+
+  // Bind eventos
+  gapInput?.addEventListener('change', onGapChange);
+  themeToggle?.addEventListener('click', onThemeToggle);
+  clearBtn?.addEventListener('click', onClearLogs);
+
+  // Estado inicial
+  applyDarkMode(dark);
 }
 
 /** Handles toggling delivery status with confirmation. */
@@ -562,13 +659,13 @@ export function renderClients(container: HTMLElement): void {
 
     const filtered = list.filter(order => {
       const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
-      
+
       let phoneMatch = false;
       if (searchablePhoneTerm.length > 0) {
         const orderPhoneAsSearchable = getSearchablePhone(order.phone);
         phoneMatch = orderPhoneAsSearchable.includes(searchablePhoneTerm);
       }
-      
+
       return nameMatch || phoneMatch;
     });
 

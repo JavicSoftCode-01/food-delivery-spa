@@ -1,6 +1,4 @@
-// Responsable: inicialización de la UI, navegación y modales de orden/comida (forms).
-// Mantiene comportamiento e interfaz existentes; arregla bug de recarga en 2º error.
-
+// src\main.ts
 import './styles.css';
 import { UI } from './ui/ui';
 import { renderDashboard, renderClients, renderFoods, renderSettings } from './ui/components';
@@ -176,7 +174,10 @@ function openOrderForm(orderId?: string): void {
   const editing = orderId ? OrderRepo.findById(orderId) : null;
   const optionsHtml = buildFoodOptions(editing?.foodId);
 
-  const html = `
+  // Extraer solo la hora si está editando
+  const timeOnly = editing ? new Date(editing.deliveryTime).toTimeString().slice(0, 5) : '';
+
+const html = `
   <div class="relative max-h-[70vh] overflow-y-auto">
     <div class="pr-8 text-center mb-6">
       <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
@@ -199,7 +200,7 @@ function openOrderForm(orderId?: string): void {
           <i class="fa fa-phone"></i> Teléfono:
         </label>
         <input name="phone" id="phoneInput" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel"
-          placeholder="Formatos: 09xxxxxxxx, +593xxxxxxxxx o +593 9X XXX XXXX"
+          placeholder="Formatos: 09xxxxxxxx, +593xxxxxxxxx"
           class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
       </div>
 
@@ -212,30 +213,12 @@ function openOrderForm(orderId?: string): void {
           placeholder="Dirección completa" />
       </div>
 
-      <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
-          <i class="fa fa-clock"></i>Hora de entrega:
-        </label>
-        <input name="deliveryTime" type="datetime-local" value="${editing ? toLocalDateInput(editing.deliveryTime) : ''}" required
-          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
-      </div>
-
-      <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
-          <i class="fa fa-utensils"></i> Comida:
-        </label>
-        <select name="foodId" id="foodSelect" class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1">
-          <option value="">Seleccionar comida...</option>
-          ${optionsHtml}
-        </select>
-      </div>
-
       <div class="grid grid-cols-2 gap-4 pb-2">
         <div>
           <label class="text-base text-gray-500 font-bold flex items-center gap-2">
-            <i class="fa fa-sort-numeric-up"></i> Cantidad:
+            <i class="fa fa-clock"></i>Hora:
           </label>
-          <input name="quantity" id="quantityInput" type="number" min="1" value="${editing?.quantity ?? 1}"
+          <input name="deliveryTime" type="time" value="${timeOnly}" required
             class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
         </div>
         <div class="flex items-end">
@@ -253,18 +236,46 @@ function openOrderForm(orderId?: string): void {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 pb-2">
-        <div>
-          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
-            <i class="fa fa-tag"></i> P. unitario:
+      <div class="pb-2">
+        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <i class="fa fa-utensils"></i> Comida:
+        </label>
+        <select name="foodId" id="foodSelect" class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1">
+          <option value="">Seleccionar comida...</option>
+          ${optionsHtml}
+        </select>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 pb-2">
+        <!-- Cantidad -->
+        <div class="text-center">
+          <label class="text-base text-gray-500 font-bold flex items-center justify-center gap-2 mb-1">
+            <i class="fa fa-sort-numeric-up"></i> Cantidad:
           </label>
-          <div id="unitPrice" class="text-gray-800 mt-1">$0.00</div>
+          <input 
+            name="quantity" 
+            id="quantityInput" 
+            type="number" 
+            min="1" 
+            value="${editing?.quantity ?? 1}"
+            class="w-full text-center text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1" 
+          />
         </div>
-        <div>
-          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+
+        <!-- Unidad -->
+        <div class="text-center">
+          <label class="text-base text-gray-500 font-bold flex items-center justify-center gap-2 mb-1">
+            <i class="fa fa-tag"></i> Unidad:
+          </label>
+          <div id="unitPrice" class="text-gray-800 text-lg font-semibold p-1 -mt-1">$0.00</div>
+        </div>
+
+        <!-- Total -->
+        <div class="text-center">
+          <label class="text-base text-gray-500 font-bold flex items-center justify-center gap-2 mb-1">
             <i class="fa fa-calculator"></i> Total:
           </label>
-          <div id="totalPrice" class="font-bold text-lg text-green-600 mt-1">$0.00</div>
+          <div id="totalPrice" class="font-bold text-2xl text-green-600 p-1 -mt-2">$0.00</div>
         </div>
       </div>
 
@@ -272,13 +283,13 @@ function openOrderForm(orderId?: string): void {
         <button type="button" id="cancelOrder" class="flex items-center gap-2 px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg">
           <i class="fa fa-times fa-lg"></i> Cancelar
         </button>
-        <button type="submit" id="submitOrder" class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors font-semibold text-lg">
+        <button type="submit" id="submitOrder" class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-600 transition-colors font-semibold text-lg">
           <i class="fa ${editing ? 'fa-edit' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}
         </button>
       </div>
     </form>
   </div>
-  `;
+`;
 
   // Abrir modal y obtener elemento
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
@@ -351,9 +362,15 @@ function openOrderForm(orderId?: string): void {
     const foodId = String(data.get('foodId') || '');
     const quantity = Math.max(1, Number(data.get('quantity')) || 1);
     const combo = !!data.get('combo');
+    const timeValue = String(data.get('deliveryTime') || '');
+    
     let deliveryTimeIso = '';
     try {
-      deliveryTimeIso = new Date(String(data.get('deliveryTime'))).toISOString();
+      // Crear fecha completa combinando la fecha actual con la hora seleccionada
+      const today = new Date();
+      const [hours, minutes] = timeValue.split(':');
+      today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      deliveryTimeIso = today.toISOString();
     } catch {
       UI.toast('Hora de entrega inválida.');
       return;
@@ -362,6 +379,7 @@ function openOrderForm(orderId?: string): void {
     if (!fullName || !phone || !deliveryAddress) { UI.toast('Completa todos los campos requeridos.'); return; }
     if (!isValidPhoneFormat(phone)) { UI.toast('El formato del teléfono es inválido.'); phoneInput.focus(); phoneInput.classList.add('border-red-500'); return; }
     if (!foodId) { UI.toast('Selecciona una comida.'); return; }
+    if (!timeValue) { UI.toast('Selecciona una hora de entrega.'); return; }
 
     const food = FoodRepo.findById(foodId);
     if (!food) { UI.toast('La comida seleccionada no fue encontrada.'); return; }
@@ -478,80 +496,141 @@ function openFoodForm(foodId?: string): void {
     const labelClass = isDisabled ? 'cursor-not-allowed opacity-60' : '';
     stockAndActiveHtml = `
       <div class="grid grid-cols-2 gap-4">
-        <label class="block text-sm">Stock <input name="stock" type="number" min="0" value="${editing.stock}" class="mt-1 w-full px-3 py-2 border rounded-md" /></label>
-        <label class="inline-flex items-center gap-2 ${labelClass} pt-6" ${tooltip}>
-          <input name="isActive" type="checkbox" ${editing.isActive ? 'checked' : ''} ${disabledAttr} class="h-5 w-5 rounded text-accent focus:ring-accent"/> Activo
-        </label>
+        <div class="pb-2">
+          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <i class="fa fa-sort-numeric-up"></i> Stock:
+          </label>
+          <input name="stock" type="number" min="0" value="${editing.stock}" 
+            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+        </div>
+        <div class="flex items-end pb-2">
+          <label class="flex items-center gap-2 cursor-pointer ${labelClass}" ${tooltip}>
+            <div class="relative">
+              <input name="isActive" type="checkbox" ${editing.isActive ? 'checked' : ''} ${disabledAttr} class="sr-only" />
+              <div class="active-checkbox w-6 h-6 border-2 border-gray-400 rounded flex items-center justify-center transition-colors">
+                <i class="fa fa-check text-white text-sm hidden"></i>
+              </div>
+            </div>
+            <span class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-power-off"></i> Activo
+            </span>
+          </label>
+        </div>
       </div>`;
   } else {
-    stockAndActiveHtml = `<div> <label class="block text-sm">Stock inicial <input name="stock" type="number" min="0" value="0" class="mt-1 w-full px-3 py-2 border rounded-md" /></label> </div>`;
+    stockAndActiveHtml = `
+      <div class="pb-2">
+        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <i class="fa fa-sort-numeric-up"></i> Stock inicial:
+        </label>
+        <input name="stock" type="number" min="0" value="0" 
+          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+      </div>`;
   }
 
   const html = `
-  <div class="relative">
-    <button id="closeForm" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20"><i class="fa fa-times text-lg"></i></button>
-    <div class="p-1">
-      <h3 class="text-xl font-bold mb-4 text-center"><i class="fa fa-utensils mr-2"></i> ${editing ? 'Editar Comida' : 'Agregar Comida'}</h3>
-      <form id="foodForm" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Nombre</label>
-          <input name="name" value="${editing?.name ?? ''}" required class="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:ring-accent focus:border-accent" />
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div><label class="block text-sm">Costo <input name="cost" type="number" step="0.01" min="0" value="${editing?.cost ?? 0}" class="mt-1 w-full px-3 py-2 border rounded-md" /></label></div>
-          <div><label class="block text-sm">Precio <input name="price" type="number" step="0.01" min="0" value="${editing?.price ?? 0}" class="mt-1 w-full px-3 py-2 border rounded-md" /></label></div>
-        </div>
-        ${stockAndActiveHtml}
-        <div class="border-t pt-4">
-          <p class="text-sm font-medium text-gray-700 mb-2">Horario de venta para esta sesión</p>
-          <div class="grid grid-cols-2 gap-4">
-  <div>
-    <label class="block text-sm">
-      Desde
-      <input 
-        name="startTime" 
-        type="time" 
-        value="${startTime}" 
-        class="mt-1 w-full px-3 py-2 border rounded-md" 
-        step="60" 
-      />
-    </label>
-  </div>
-  <div>
-    <label class="block text-sm">
-      Hasta
-      <input 
-        name="endTime" 
-        type="time" 
-        value="${endTime}" 
-        class="mt-1 w-full px-3 py-2 border rounded-md" 
-        step="60" 
-      />
-    </label>
-  </div>
-</div>
-
-        </div>
-        <div class="flex justify-end pt-4">
-          <button type="submit" id="submitFood" class="w-full px-4 py-2 bg-accent text-white rounded-md hover:bg-accent/90 font-semibold flex items-center justify-center gap-2">
-            <i class="fa ${editing ? 'fa-save' : 'fa-plus'}"></i> ${editing ? 'Actualizar' : 'Agregar'}
-          </button>
-        </div>
-      </form>
+  <div class="relative max-h-[70vh] overflow-y-auto">
+    <div class="pr-8 text-center mb-6">
+      <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
+        ${editing ? 'Editar Comida' : 'Agregar Comida'}
+        <i class="fa-solid fa-utensils fa-lg"></i>
+      </h3>
     </div>
+    <form id="foodForm" class="space-y-4">
+      <div class="pb-2">
+        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <i class="fa fa-tag"></i> Nombre:
+        </label>
+        <input name="name" value="${editing?.name ?? ''}" required
+          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1"
+          placeholder="Ingresa el nombre de la comida" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 pb-2">
+        <div>
+          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <i class="fa fa-dollar-sign"></i> Costo:
+          </label>
+          <input name="cost" type="number" step="0.01" min="0" value="${editing?.cost ?? 0}" 
+            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+        </div>
+        <div>
+          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <i class="fa fa-tag"></i> Precio:
+          </label>
+          <input name="price" type="number" step="0.01" min="0" value="${editing?.price ?? 0}" 
+            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+        </div>
+      </div>
+
+      ${stockAndActiveHtml}
+
+      <div class="pt-4 pb-2">
+        <p class="text-base text-gray-500 font-bold mb-4 flex items-center gap-2">
+          <i class="fa fa-clock"></i> Horario de venta para esta sesión
+        </p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-play"></i> Desde:
+            </label>
+            <input name="startTime" type="time" value="${startTime}" step="60"
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+          </div>
+          <div class="pb-2">
+            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+              <i class="fa fa-stop"></i> Hasta:
+            </label>
+            <input name="endTime" type="time" value="${endTime}" step="60"
+              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-4 mt-6">
+        <button type="button" id="cancelFood" class="flex items-center gap-2 px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg">
+          <i class="fa fa-times fa-lg"></i> Cancelar
+        </button>
+        <button type="submit" id="submitFood" class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors font-semibold text-lg">
+          <i class="fa ${editing ? 'fa-edit' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}
+        </button>
+      </div>
+    </form>
   </div>`;
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
-  const closeBtn = element.querySelector('#closeForm') as HTMLButtonElement;
+  const cancelBtn = element.querySelector('#cancelFood') as HTMLButtonElement;
   const foodForm = element.querySelector('#foodForm') as HTMLFormElement;
+  const activeCheckbox = element.querySelector('input[name="isActive"]') as HTMLInputElement;
+
+  // Handler para actualizar el estilo del checkbox de activo
+  const updateActiveCheckboxStyle = () => {
+    if (!activeCheckbox) return;
+    const checkboxContainer = element.querySelector('.active-checkbox')!;
+    const checkIcon = checkboxContainer.querySelector('.fa-check')!;
+    if (activeCheckbox.checked) {
+      checkboxContainer.classList.add('bg-accent', 'border-accent');
+      checkboxContainer.classList.remove('border-gray-400');
+      checkIcon.classList.remove('hidden');
+    } else {
+      checkboxContainer.classList.remove('bg-accent', 'border-accent');
+      checkboxContainer.classList.add('border-gray-400');
+      checkIcon.classList.add('hidden');
+    }
+  };
 
   // Handlers nombrados
   const cleanup = () => {
     try { foodForm.removeEventListener('submit', onSubmit); } catch {}
-    try { closeBtn.removeEventListener('click', onClose); } catch {}
+    try { cancelBtn.removeEventListener('click', onCancel); } catch {}
+    if (activeCheckbox) {
+      try { activeCheckbox.removeEventListener('change', onActiveChange); } catch {}
+    }
   };
 
-  const onClose = () => { cleanup(); close(); };
+  const onCancel = () => { cleanup(); close(); };
+
+  const onActiveChange = () => updateActiveCheckboxStyle();
 
   const onSubmit = (ev: Event) => {
     ev.preventDefault();
@@ -585,7 +664,13 @@ function openFoodForm(foodId?: string): void {
 
   // Attach listeners
   foodForm.addEventListener('submit', onSubmit);
-  closeBtn.addEventListener('click', onClose);
+  cancelBtn.addEventListener('click', onCancel);
+  if (activeCheckbox) {
+    activeCheckbox.addEventListener('change', onActiveChange);
+  }
+
+  // Inicializar estado del checkbox
+  updateActiveCheckboxStyle();
 }
 
 /** Muestra modal con historial de ventas y detalles. */
