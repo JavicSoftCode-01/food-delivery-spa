@@ -22,17 +22,17 @@ export const UI = {
   /** Renders the main application shell. */
   renderShell() {
     root.innerHTML = `
-      <header class="bg-white rounded-xl p-4 shadow-sm border border-border flex items-center justify-between gap-3 mb-4">
+      <header class="bg-white dark:bg-dark-bg-secondary rounded-xl p-4 shadow-sm border dark:border-dark-border flex items-center justify-between gap-3 mb-4">
         <div class="flex-grow">
           <h1 id="main-title" class="font-bold">Gestión Delivery</h1>
-          <p class="text-sm text-gray-500">JavicSoftCode · Back-End Developer</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">JavicSoftCode · Back-End Developer</p>
         </div>
         <div id="header-extra" class="flex-shrink-0 flex items-center justify-center h-12 w-14 translate-x-2">
           <!-- El contador o botón de archivar se renderizará aquí -->
         </div>
       </header>
       <main id="mainArea"></main>
-      <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-border safe-bottom p-2 md:bottom-4 md:left-1/2 md:-translate-x-1/2 rounded-lg md:px-2 md:py-1 md:w-auto flex items-center justify-between gap-2" role="navigation" aria-label="Navegación principal">
+      <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-dark-bg-secondary/95 backdrop-blur-sm border-t dark:border-dark-border safe-bottom p-2 md:bottom-4 md:left-1/2 md:-translate-x-1/2 rounded-lg md:px-2 md:py-1 md:w-auto flex items-center justify-between gap-2" role="navigation" aria-label="Navegación principal">
   <button data-screen="dashboard" class="nav-item flex-1 md:w-auto flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg" aria-label="Dashboard">
     <i class="fa fa-chart-simple text-2xl" aria-hidden="true"></i>
     <span class="text-sm font-semibold">Dashboard</span>
@@ -69,7 +69,7 @@ export const UI = {
   /** Displays a temporary toast message. */
   toast(msg: string) {
     const troot = document.getElementById('toastRoot')!;
-    troot.innerHTML = `<div class="toast bg-gray-900 text-white rounded-lg p-3 shadow">${msg}</div>`;
+    troot.innerHTML = `<div class="toast bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 rounded-lg p-3 shadow">${msg}</div>`;
     if (UI.toastTimer) window.clearTimeout(UI.toastTimer);
     UI.toastTimer = window.setTimeout(() => {
       troot.innerHTML = '';
@@ -88,7 +88,7 @@ export const UI = {
 
     modalWrapper.innerHTML = `
       <div class="modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: ${zIndex};">
-        <div class="modal-content bg-white rounded-xl w-full max-w-xl p-4 shadow-lg relative
+        <div class="modal-content bg-white dark:bg-dark-bg-secondary rounded-xl w-full max-w-xl p-4 shadow-lg relative
             -mt-[80px] sm:-mt-[60px] md:-mt-[80px] lg:-mt-[100px]">
           ${html}
         </div>
@@ -119,9 +119,9 @@ export const UI = {
   confirm(message: string, onYes: () => void) {
     const { close, element } = UI.modal(
       `<div>
-        <p class="text-gray-700">${message}</p>
+        <p class="text-gray-700 dark:text-dark-text">${message}</p>
         <div class="mt-4 flex justify-end gap-2">
-          <button class="confirm-no-btn px-4 py-2 rounded-lg border">No</button>
+          <button class="confirm-no-btn px-4 py-2 rounded-lg border dark:border-dark-border">No</button>
           <button class="confirm-yes-btn px-4 py-2 rounded-lg bg-accent text-white">Sí</button>
         </div>
       </div>`,

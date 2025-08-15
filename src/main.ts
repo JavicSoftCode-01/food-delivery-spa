@@ -113,8 +113,19 @@ function renderCurrent(): void {
   else if (currentScreen === 'settings') renderSettings(container);
 }
 
+/** Inicializa el tema oscuro si está guardado en localStorage. */
+function initializeTheme(): void {
+  const metaRaw = localStorage.getItem('fd_meta_v1') || '{}';
+  let meta: { darkMode?: boolean } = {};
+  try { meta = JSON.parse(metaRaw) || {}; } catch { meta = {}; }
+  if (meta.darkMode) {
+    document.documentElement.classList.add('dark');
+  }
+}
+
 /** Inicializa shell y listeners de navegación. */
 function bootstrap(): void {
+  initializeTheme();
   UI.renderShell();
 
   // Delegado de navegación (botones creados por renderShell)
@@ -167,8 +178,9 @@ function buildFoodOptions(editingFoodId?: string): string {
 
 /**
  * Abre el modal del formulario de pedido para crear/editar.
- * Se asegura de NO usar `once:true` en submit y limpia listeners al cerrar.
- * @param orderId id de pedido (opcional) para edición.
+ * - Si se crea (no editing): al intentar guardar y existir conflicto, ajusta el input de hora automáticamente y muestra toast.
+ * - Si se edita: comportamiento similar (se sugiere revisar ajuste), pero el formulario cierra al guardar normalmente.
+ * @param orderId id del pedido a editar (opcional).
  */
 function openOrderForm(orderId?: string): void {
   const editing = orderId ? OrderRepo.findById(orderId) : null;
@@ -177,7 +189,7 @@ function openOrderForm(orderId?: string): void {
   // Extraer solo la hora si está editando
   const timeOnly = editing ? new Date(editing.deliveryTime).toTimeString().slice(0, 5) : '';
 
-const html = `
+  const html = `
   <div class="relative max-h-[70vh] overflow-y-auto">
     <div class="pr-8 text-center mb-6">
       <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
@@ -187,49 +199,49 @@ const html = `
     </div>
     <form id="orderForm" class="space-y-4">
       <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
           <i class="fa fa-user"></i>Nombre completo:
         </label>
         <input name="fullName" value="${editing?.fullName ?? ''}" required
-          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1"
+          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1"
           placeholder="Ingresa el nombre completo" />
       </div>
 
       <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
           <i class="fa fa-phone"></i> Teléfono:
         </label>
         <input name="phone" id="phoneInput" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel"
           placeholder="Formatos: 09xxxxxxxx, +593xxxxxxxxx"
-          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
       </div>
 
       <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
           <i class="fa fa-map-marker-alt"></i> Dirección de entrega:
         </label>
         <input name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required
-          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1"
+          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1"
           placeholder="Dirección completa" />
       </div>
 
       <div class="grid grid-cols-2 gap-4 pb-2">
         <div>
-          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
             <i class="fa fa-clock"></i>Hora:
           </label>
           <input name="deliveryTime" type="time" value="${timeOnly}" required
-            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
         </div>
         <div class="flex items-end">
           <label class="flex items-center gap-2 cursor-pointer">
             <div class="relative">
               <input name="combo" id="comboCheckbox" type="checkbox" ${editing?.combo ? 'checked' : ''} class="sr-only" />
-              <div class="combo-checkbox w-6 h-6 border-2 border-gray-400 rounded flex items-center justify-center transition-colors">
+              <div class="combo-checkbox w-6 h-6 border-2 border-gray-400 dark:border-dark-border rounded flex items-center justify-center transition-colors">
                 <i class="fa fa-check text-white text-sm hidden"></i>
               </div>
             </div>
-            <span class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <span class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
               <i class="fa fa-gift"></i> Combo
             </span>
           </label>
@@ -237,10 +249,10 @@ const html = `
       </div>
 
       <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
           <i class="fa fa-utensils"></i> Comida:
         </label>
-        <select name="foodId" id="foodSelect" class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1">
+        <select name="foodId" id="foodSelect" class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1">
           <option value="">Seleccionar comida...</option>
           ${optionsHtml}
         </select>
@@ -249,7 +261,7 @@ const html = `
       <div class="grid grid-cols-3 gap-4 pb-2">
         <!-- Cantidad -->
         <div class="text-center">
-          <label class="text-base text-gray-500 font-bold flex items-center justify-center gap-2 mb-1">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center gap-2 mb-1">
             <i class="fa fa-sort-numeric-up"></i> Cantidad:
           </label>
           <input 
@@ -258,21 +270,21 @@ const html = `
             type="number" 
             min="1" 
             value="${editing?.quantity ?? 1}"
-            class="w-full text-center text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1" 
+            class="w-full text-center text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1" 
           />
         </div>
 
         <!-- Unidad -->
         <div class="text-center">
-          <label class="text-base text-gray-500 font-bold flex items-center justify-center gap-2 mb-1">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center gap-2 mb-1">
             <i class="fa fa-tag"></i> Unidad:
           </label>
-          <div id="unitPrice" class="text-gray-800 text-lg font-semibold p-1 -mt-1">$0.00</div>
+          <div id="unitPrice" class="text-gray-800 dark:text-dark-text text-lg font-semibold p-1 -mt-1">$0.00</div>
         </div>
 
         <!-- Total -->
         <div class="text-center">
-          <label class="text-base text-gray-500 font-bold flex items-center justify-center gap-2 mb-1">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center gap-2 mb-1">
             <i class="fa fa-calculator"></i> Total:
           </label>
           <div id="totalPrice" class="font-bold text-2xl text-green-600 p-1 -mt-2">$0.00</div>
@@ -303,6 +315,9 @@ const html = `
   const totalPriceDiv = element.querySelector('#totalPrice')!;
   const cancelBtn = element.querySelector('#cancelOrder') as HTMLButtonElement;
   const orderForm = element.querySelector('#orderForm') as HTMLFormElement;
+  const fullNameInput = orderForm.querySelector('input[name="fullName"]') as HTMLInputElement;
+  const deliveryAddressInput = orderForm.querySelector('input[name="deliveryAddress"]') as HTMLInputElement;
+  const timeInput = orderForm.querySelector('input[name="deliveryTime"]') as HTMLInputElement;
 
   // Handlers nombrados para poder removerlos
   const updateCheckboxStyle = () => {
@@ -310,11 +325,11 @@ const html = `
     const checkIcon = checkboxContainer.querySelector('.fa-check')!;
     if (comboCheckbox.checked) {
       checkboxContainer.classList.add('bg-accent', 'border-accent');
-      checkboxContainer.classList.remove('border-gray-400');
+      checkboxContainer.classList.remove('border-gray-400', 'dark:border-dark-border');
       checkIcon.classList.remove('hidden');
     } else {
       checkboxContainer.classList.remove('bg-accent', 'border-accent');
-      checkboxContainer.classList.add('border-gray-400');
+      checkboxContainer.classList.add('border-gray-400', 'dark:border-dark-border');
       checkIcon.classList.add('hidden');
     }
   };
@@ -352,6 +367,32 @@ const html = `
     if (errorMessage) UI.toast(errorMessage);
   }, 3000);
 
+  /**
+   * Ajusta el input timeInput al siguiente hueco libre que cumpla el gap.
+   * No guarda automáticamente: se muestra un toast y se retorna al usuario para que confirme (re-entregue el submit).
+   * @param requestedMs tiempo solicitado (ms)
+   * @param gapMinutes brecha en minutos
+   */
+  const adjustTimeToGap = (requestedMs: number, gapMinutes: number): number => {
+    const gapMs = Math.abs(gapMinutes) * 60 * 1000;
+    const othersMs = OrderRepo.getAll()
+      .filter(o => !(editing && o.id === editing.id))
+      .map(o => new Date(o.deliveryTime).getTime());
+
+    let candidate = requestedMs;
+    let iter = 0;
+    while (true) {
+      const conflicting = othersMs.filter(oMs => Math.abs(candidate - oMs) < gapMs);
+      if (conflicting.length === 0) break;
+      // ajustar al máximo conflicting + gap
+      const maxConflicting = Math.max(...conflicting);
+      candidate = Math.max(candidate, maxConflicting + gapMs);
+      iter++;
+      if (iter > 50) break; // safety
+    }
+    return candidate;
+  };
+
   // submit handler (nombrado para removerlo al cerrar)
   const onSubmit = (ev: Event) => {
     ev.preventDefault(); // siempre prevenir submit por defecto
@@ -363,7 +404,9 @@ const html = `
     const quantity = Math.max(1, Number(data.get('quantity')) || 1);
     const combo = !!data.get('combo');
     const timeValue = String(data.get('deliveryTime') || '');
-    
+
+    if (!timeValue) { UI.toast('Selecciona una hora de entrega.'); return; }
+
     let deliveryTimeIso = '';
     try {
       // Crear fecha completa combinando la fecha actual con la hora seleccionada
@@ -379,7 +422,6 @@ const html = `
     if (!fullName || !phone || !deliveryAddress) { UI.toast('Completa todos los campos requeridos.'); return; }
     if (!isValidPhoneFormat(phone)) { UI.toast('El formato del teléfono es inválido.'); phoneInput.focus(); phoneInput.classList.add('border-red-500'); return; }
     if (!foodId) { UI.toast('Selecciona una comida.'); return; }
-    if (!timeValue) { UI.toast('Selecciona una hora de entrega.'); return; }
 
     const food = FoodRepo.findById(foodId);
     if (!food) { UI.toast('La comida seleccionada no fue encontrada.'); return; }
@@ -401,16 +443,42 @@ const html = `
 
     const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
     const gap = meta.deliveryGapMinutes ?? 15;
+
+    // comprobar conflicto (usa checkConflict existente)
     const conflict = OrderRepo.checkConflict(deliveryTimeIso, phone, gap, editing?.id);
-    if (conflict.conflict) { UI.toast(`Hay conflicto de horario (gap ${gap} min). Elige otra hora.`); return; }
+    if (conflict.conflict) {
+      // Ajustar automáticamente el campo de hora al siguiente hueco que cumpla el gap y avisar al admin.
+      const requestedMs = new Date(deliveryTimeIso).getTime();
+      const adjustedMs = adjustTimeToGap(requestedMs, gap);
+
+      // Formatear adjustedMs a HH:MM local (para el input[type=time])
+      const adjustedDate = new Date(adjustedMs);
+      const hh = String(adjustedDate.getHours()).padStart(2, '0');
+      const mm = String(adjustedDate.getMinutes()).padStart(2, '0');
+      timeInput.value = `${hh}:${mm}`;
+
+      UI.toast(`Conflicto de entrega. Hora ajustada para cumplir ${gap} min de intervalo.`);
+
+      // No guardar aún: el usuario puede revisar y volver a presionar guardar.
+      return;
+    }
 
     const payload = { fullName, phone, deliveryAddress, foodId, quantity, combo, deliveryTime: deliveryTimeIso };
 
     let success = false;
     if (editing) {
+      // edición: comportamiento previo (guardar y cerrar)
       success = OrderRepo.update({ ...editing, ...payload });
-      if (success) UI.toast('Pedido actualizado exitosamente.');
+      if (success) {
+        UI.toast('Pedido actualizado exitosamente.');
+        // cerrar modal y limpiar listeners
+        cleanup();
+        close();
+        renderCurrent();
+      }
+      return;
     } else {
+      // nuevo pedido: guardar, mostrar toast, NO cerrar; limpiar inputs para nuevo ingreso
       const newOrder = OrderRepo.add(payload);
       if (newOrder) {
         success = true;
@@ -419,15 +487,37 @@ const html = `
     }
 
     if (success) {
-      cleanup(); // limpiar listeners antes de cerrar
-      close();
+      // refrescar vistas/subcomponentes (sin cerrar modal)
       renderCurrent();
+
+      // limpiar formulario para nuevo ingreso
+      orderForm.reset(); // revierte a los valores por defecto del HTML
+      // asegurarse de valores por defecto coherentes
+      quantityInput.value = '1';
+      comboCheckbox.checked = false;
+      // limpiar selects/inputs
+      foodSelect.value = '';
+      phoneInput.value = '';
+      fullNameInput.value = '';
+      deliveryAddressInput.value = '';
+      // establecer hora por defecto a la hora local actual (HH:MM)
+      const now = new Date();
+      const nh = String(now.getHours()).padStart(2, '0');
+      const nm = String(now.getMinutes()).padStart(2, '0');
+      timeInput.value = `${nh}:${nm}`;
+
+      // actualizar vistas internas del modal
+      updateCheckboxStyle();
+      updatePricing();
+      updatePhoneValidation();
+
+      // poner foco en nombre para entrada rápida del siguiente pedido
+      fullNameInput.focus();
     }
   };
 
-  // Agregar listeners (no once) y ejecutar setup inicial
+  // cleanup y listeners de cancel
   const cleanup = () => {
-    // remover listeners que añadimos
     try { orderForm.removeEventListener('submit', onSubmit); } catch {}
     try { cancelBtn.removeEventListener('click', onCancel); } catch {}
     try { phoneInput.removeEventListener('input', onPhoneInput); } catch {}
@@ -438,7 +528,7 @@ const html = `
     try { comboCheckbox.removeEventListener('change', onComboChange); } catch {}
   };
 
-  // otros handlers nombrados para poder removerlos
+  // otros handlers nombrados para remover/añadir
   const onCancel = () => { cleanup(); close(); };
   const onPhoneInput = (ev: Event) => { handlePhoneInput(ev); updatePhoneValidation(); debouncedPrefixCheck(); };
   const onPhoneBlur = () => {
@@ -474,6 +564,8 @@ const html = `
   updatePhoneValidation();
 }
 
+
+
 /* -------------------- Helpers / Formulario Comida -------------------- */
 
 /**
@@ -497,21 +589,21 @@ function openFoodForm(foodId?: string): void {
     stockAndActiveHtml = `
       <div class="grid grid-cols-2 gap-4">
         <div class="pb-2">
-          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
             <i class="fa fa-sort-numeric-up"></i> Stock:
           </label>
           <input name="stock" type="number" min="0" value="${editing.stock}" 
-            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
         </div>
         <div class="flex items-end pb-2">
           <label class="flex items-center gap-2 cursor-pointer ${labelClass}" ${tooltip}>
             <div class="relative">
               <input name="isActive" type="checkbox" ${editing.isActive ? 'checked' : ''} ${disabledAttr} class="sr-only" />
-              <div class="active-checkbox w-6 h-6 border-2 border-gray-400 rounded flex items-center justify-center transition-colors">
+              <div class="active-checkbox w-6 h-6 border-2 border-gray-400 dark:border-dark-border rounded flex items-center justify-center transition-colors">
                 <i class="fa fa-check text-white text-sm hidden"></i>
               </div>
             </div>
-            <span class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <span class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
               <i class="fa fa-power-off"></i> Activo
             </span>
           </label>
@@ -520,11 +612,11 @@ function openFoodForm(foodId?: string): void {
   } else {
     stockAndActiveHtml = `
       <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
           <i class="fa fa-sort-numeric-up"></i> Stock inicial:
         </label>
         <input name="stock" type="number" min="0" value="0" 
-          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
       </div>`;
   }
 
@@ -538,51 +630,51 @@ function openFoodForm(foodId?: string): void {
     </div>
     <form id="foodForm" class="space-y-4">
       <div class="pb-2">
-        <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
           <i class="fa fa-tag"></i> Nombre:
         </label>
         <input name="name" value="${editing?.name ?? ''}" required
-          class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1"
+          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1"
           placeholder="Ingresa el nombre de la comida" />
       </div>
 
       <div class="grid grid-cols-2 gap-4 pb-2">
         <div>
-          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
             <i class="fa fa-dollar-sign"></i> Costo:
           </label>
           <input name="cost" type="number" step="0.01" min="0" value="${editing?.cost ?? 0}" 
-            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
         </div>
         <div>
-          <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
             <i class="fa fa-tag"></i> Precio:
           </label>
           <input name="price" type="number" step="0.01" min="0" value="${editing?.price ?? 0}" 
-            class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
         </div>
       </div>
 
       ${stockAndActiveHtml}
 
       <div class="pt-4 pb-2">
-        <p class="text-base text-gray-500 font-bold mb-4 flex items-center gap-2">
+        <p class="text-base text-gray-500 dark:text-gray-400 font-bold mb-4 flex items-center gap-2">
           <i class="fa fa-clock"></i> Horario de venta para esta sesión
         </p>
         <div class="grid grid-cols-2 gap-4">
           <div class="pb-2">
-            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
               <i class="fa fa-play"></i> Desde:
             </label>
             <input name="startTime" type="time" value="${startTime}" step="60"
-              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+              class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
           </div>
           <div class="pb-2">
-            <label class="text-base text-gray-500 font-bold flex items-center gap-2">
+            <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
               <i class="fa fa-stop"></i> Hasta:
             </label>
             <input name="endTime" type="time" value="${endTime}" step="60"
-              class="w-full text-gray-800 bg-transparent border-0 border-b border-gray-300 focus:border-accent focus:outline-none p-1 mt-1" />
+              class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
           </div>
         </div>
       </div>
@@ -610,11 +702,11 @@ function openFoodForm(foodId?: string): void {
     const checkIcon = checkboxContainer.querySelector('.fa-check')!;
     if (activeCheckbox.checked) {
       checkboxContainer.classList.add('bg-accent', 'border-accent');
-      checkboxContainer.classList.remove('border-gray-400');
+      checkboxContainer.classList.remove('border-gray-400', 'dark:border-dark-border');
       checkIcon.classList.remove('hidden');
     } else {
       checkboxContainer.classList.remove('bg-accent', 'border-accent');
-      checkboxContainer.classList.add('border-gray-400');
+      checkboxContainer.classList.add('border-gray-400', 'dark:border-dark-border');
       checkIcon.classList.add('hidden');
     }
   };
@@ -685,15 +777,15 @@ function openSalesHistoryModal(foodId: string): void {
       <button id="closeHistory" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20"><i class="fa fa-times text-lg"></i></button>
       <div class="p-1">
         <button id="backToList" class="text-sm text-accent hover:underline mb-3"><i class="fa fa-arrow-left mr-2"></i>Volver a la lista</button>
-        <h4 class="text-lg font-bold text-center mb-4 text-gray-800">Detalles del ${record.recordDate}</h4>
-        <div class="space-y-3 text-sm bg-gray-50 p-4 rounded-lg border">
-          <p class="flex justify-between"><strong><i class="fa fa-calendar-alt w-5 text-gray-500"></i>Fecha:</strong> <span>${record.recordDate}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-clock w-5 text-gray-500"></i>Horario:</strong> <span>${record.startTime} - ${record.endTime}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-cubes w-5 text-gray-500"></i>Stock Inicial:</strong> <span>${record.initialStock}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-tag w-5 text-gray-500"></i>Precio:</strong> <span>${formatCurrency(record.unitPrice)}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-dollar-sign w-5 text-gray-500"></i>Costo:</strong> <span>${formatCurrency(record.unitCost)}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-chart-line w-5 text-gray-500"></i>Vendidos:</strong> <span>${record.quantitySold}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-toggle-on w-5 text-gray-500"></i>Estado:</strong> <span class="font-semibold ${record.isActive ? 'text-green-600' : 'text-red-500'}">${record.isActive ? 'Activa' : 'Finalizada'}</span></p>
+        <h4 class="text-lg font-bold text-center mb-4 text-gray-800 dark:text-dark-text">Detalles del ${record.recordDate}</h4>
+        <div class="space-y-3 text-sm bg-gray-50 dark:bg-dark-bg p-4 rounded-lg border dark:border-dark-border">
+          <p class="flex justify-between"><strong><i class="fa fa-calendar-alt w-5 text-gray-500 dark:text-gray-400"></i>Fecha:</strong> <span>${record.recordDate}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-clock w-5 text-gray-500 dark:text-gray-400"></i>Horario:</strong> <span>${record.startTime} - ${record.endTime}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-cubes w-5 text-gray-500 dark:text-gray-400"></i>Stock Inicial:</strong> <span>${record.initialStock}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-tag w-5 text-gray-500 dark:text-gray-400"></i>Precio:</strong> <span>${formatCurrency(record.unitPrice)}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-dollar-sign w-5 text-gray-500 dark:text-gray-400"></i>Costo:</strong> <span>${formatCurrency(record.unitCost)}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-chart-line w-5 text-gray-500 dark:text-gray-400"></i>Vendidos:</strong> <span>${record.quantitySold}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-toggle-on w-5 text-gray-500 dark:text-gray-400"></i>Estado:</strong> <span class="font-semibold ${record.isActive ? 'text-green-600' : 'text-red-500'}">${record.isActive ? 'Activa' : 'Finalizada'}</span></p>
         </div>
       </div>`;
     if (!modalRef) return;
@@ -706,16 +798,16 @@ function openSalesHistoryModal(foodId: string): void {
     const history = FoodSaleRecordRepo.findByFoodId(foodId);
     let listContent: string;
     if (history.length === 0) {
-      listContent = '<p class="text-gray-500 text-center py-8">No hay historial de ventas para esta comida.</p>';
+      listContent = '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No hay historial de ventas para esta comida.</p>';
     } else {
       const listItems = history.map(record => `
-        <li class="border-b last:border-b-0">
-          <button data-record-id="${record.id}" class="w-full text-left p-3 hover:bg-gray-100 flex justify-between items-center record-item transition-colors">
-            <div class="font-medium"><i class="fa fa-calendar-day mr-2 text-gray-400"></i> ${record.recordDate} <span class="text-xs text-gray-500">(${record.startTime} - ${record.endTime})</span></div>
+        <li class="border-b dark:border-dark-border last:border-b-0">
+          <button data-record-id="${record.id}" class="w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center record-item transition-colors">
+            <div class="font-medium"><i class="fa fa-calendar-day mr-2 text-gray-400"></i> ${record.recordDate} <span class="text-xs text-gray-500 dark:text-gray-400">(${record.startTime} - ${record.endTime})</span></div>
             <div class="text-sm">Vendidos: <strong>${record.quantitySold}</strong> <span class="text-xs ${Math.abs(record.unitPrice - food.price) > 0.001 ? 'text-blue-500' : ''}">(${formatCurrency(record.unitPrice)})</span></div>
           </button>
         </li>`).join('');
-      listContent = `<ul class="bg-white rounded-lg border">${listItems}</ul>`;
+      listContent = `<ul class="bg-white dark:bg-dark-bg rounded-lg border dark:border-dark-border">${listItems}</ul>`;
     }
 
     const fullHtml = `
