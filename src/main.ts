@@ -200,45 +200,45 @@ function openOrderForm(orderId?: string): void {
   <div class="flex flex-col h-full max-h-[calc(90*var(--vh,1vh))] bg-white dark:bg-gray-900 rounded-lg overflow-hidden text-sm sm:text-base">
     
     <!-- 1. CABECERA FIJA -->
-    <div class="flex-shrink-0 p-3 sm:p-4">
-      <h3 class="text-lg sm:text-xl font-bold text-center flex items-center justify-center gap-2">
+    <div class="flex-shrink-0 p-2">
+      <h3 class="text-xl font-bold text-center flex items-center justify-center gap-2">
         <i class="fa-solid fa-file-invoice-dollar"></i>
         <span>${editing ? 'Editar Pedido' : 'Agregar Pedido'}</span>
       </h3>
     </div>
 
     <!-- 2. CONTENIDO DEL FORMULARIO (LA ÚNICA PARTE CON SCROLL) -->
-    <div class="flex-1 overflow-y-auto p-2">
+    <div class="flex-1 overflow-y-auto p-2 -mt-1">
       <form id="orderForm" class="space-y-4">
         
         <!-- Nombre completo -->
         <div>
-          <label for="fullName" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-user w-4"></i>Nombre completo</label>
+          <label for="fullName" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-user w-4"></i>Nombres</label>
           <input id="fullName" name="fullName" value="${editing?.fullName ?? ''}" required
-            class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
-            placeholder="Ingresa el nombre completo" />
+            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+            placeholder="Ingresar nombres completos" />
         </div>
         
         <!-- Dirección de entrega -->
         <div>
-          <label for="deliveryAddress" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-map-marker-alt w-4"></i>Dirección de entrega</label>
+          <label for="deliveryAddress" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-map-marker-alt w-4"></i>Dirección</label>
           <input id="deliveryAddress" name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required
-            class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
-            placeholder="Dirección completa" />
+            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+            placeholder="Ingresar dirección" />
         </div>
         
         <!-- Rejilla: Teléfono y Hora (2 Columnas) -->
-        <div class="grid grid-cols-2 gap-x-4">
+        <div class="grid grid-cols-[60%_40%] gap-x-4">
           <div>
-            <label for="phone" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-phone w-4"></i>Teléfono</label>
+            <label for="phone" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-phone w-4"></i>Teléfono</label>
             <input id="phone" name="phone" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel"
-              placeholder="Formatos: 09xxxxxxxx"
-              class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
+              placeholder="Formato 09 o +593"
+              class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
           </div>
-          <div>
-            <label for="deliveryTime" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-clock w-4"></i>Hora</label>
+          <div class="max-w-[90px]">
+            <label for="deliveryTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-clock w-4"></i>Hora</label>
             <input id="deliveryTime" name="deliveryTime" type="time" value="${timeOnly}" required
-              class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
+              class="text-base w-full bg-transparent p-1 mb-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
           </div>
         </div>
         
@@ -246,17 +246,17 @@ function openOrderForm(orderId?: string): void {
         <div class="grid grid-cols-2 gap-x-4">
           <div>
             <div class="flex justify-between items-center">
-              <label for="foodId" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-utensils w-4"></i>Comida</label>
-              <div id="unitPriceDisplay" class="text-xs text-gray-500 dark:text-gray-400 font-semibold"></div>
+              <label for="foodId" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-utensils w-4"></i>Comida</label>
+              <div id="unitPriceDisplay" class="text-sm text-gray-500 dark:text-gray-400 font-semibold"></div>
             </div>
-            <select id="foodId" name="foodId" class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
-              <option value="">Seleccionar comida...</option>
+            <select id="foodId" name="foodId" class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
+              <option value="">Elegir comida</option>
               ${optionsHtml}
             </select>
           </div>
           <div id="comboContainer">
-            <label for="comboId" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-4"></i>Combo</label>
-            <select id="comboId" name="comboId" class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
+            <label for="comboId" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-4"></i>Combo</label>
+            <select id="comboId" name="comboId" class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
               <option value="">Sin combo</option>
             </select>
           </div>
@@ -265,17 +265,17 @@ function openOrderForm(orderId?: string): void {
         <!-- Rejilla: Cantidades y Total (3 Columnas) -->
         <div class="grid grid-cols-3 gap-x-4">
           <div class="text-center">
-            <label for="quantity" class="flex items-center justify-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-sort-numeric-up w-3"></i>C. Unitaria</label>
+            <label for="quantity" class="flex items-center justify-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-sort-numeric-up w-4"></i>Cant. U.</label>
             <input id="quantity" name="quantity" type="number" min="0" value="${editing?.quantity ?? 0}"
-              class="text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+              class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
           </div>
           <div class="text-center">
-            <label for="comboQuantity" class="flex items-center justify-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-3"></i>C. Combos</label>
+            <label for="comboQuantity" class="flex items-center justify-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-4"></i>Combos</label>
             <input id="comboQuantity" name="comboQuantity" type="number" min="0" value="${editing?.comboQuantity ?? 0}"
-              class="text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+              class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
           </div>
           <div class="text-center">
-            <label class="flex items-center justify-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-calculator w-3"></i>Total</label>
+            <label class="flex items-center justify-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-calculator w-3"></i>Total</label>
             <div id="totalPrice" class="font-bold text-xl text-green-600 p-1">$0.00</div>
           </div>
         </div>
@@ -283,11 +283,12 @@ function openOrderForm(orderId?: string): void {
     </div>
 
     <!-- 3. PIE DE PÁGINA FIJO (BOTONES SIEMPRE VISIBLES) -->
-    <div class="flex-shrink-0 flex justify-center gap-4 py-4 bg-white dark:bg-gray-800  border-t border-gray-200 dark:border-gray-700">
-      <button type="button" id="cancelOrder" class="flex items-center gap-2 px-1 py-1 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times"></i> Cancelar</button>
-      <button type="submit" form="orderForm" id="submitOrder" class="flex items-center gap-2 px-1 py-1 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'}"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
+    <div class="flex-shrink-0 flex justify-center gap-10 py-3 bg-white dark:bg-gray-800  border-t border-gray-200 dark:border-gray-700">
+      <button type="button" id="cancelOrder" class="flex items-center gap-2 p-2 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times fa-lg"></i> Cancelar</button>
+      <button type="submit" form="orderForm" id="submitOrder" class="flex items-center gap-2 p-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
     </div>
   </div>`;
+
 
   document.documentElement.style.overflow = 'hidden';
 
@@ -328,7 +329,7 @@ function openOrderForm(orderId?: string): void {
     if (!food) {
       totalPriceDiv.textContent = formatCurrency(0);
       unitPriceDiv.textContent = '';
-      comboSelect.innerHTML = '<option value="">Sin combo</option>';
+      comboSelect.innerHTML = '<option value="">Elegir combo</option>';
       comboQuantityInput.disabled = true;
       return;
     }
@@ -679,19 +680,30 @@ function openFoodForm(foodId?: string): void {
         </div>
 
         <!-- Rejilla 2: Stock, Horario (3 Columnas) -->
-        <div class="grid grid-cols-3 gap-x-4">
+        <div class="grid grid-cols-[70px_100px_105px] gap-x-3">
+          <!-- Stock -->
           <div>
-            <label for="stock" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-boxes-stacked w-5"></i>Stock</label>
+            <label for="stock" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400">
+              <i class="fa fa-boxes-stacked w-4"></i>Stock
+            </label>
             <input id="stock" name="stock" type="number" min="0" value="${editing?.stock ?? 0}"
                    class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
           </div>
+
+          <!-- Hora Inicio -->
           <div>
-            <label for="startTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-play w-3"></i>Hora I.</label>
+            <label for="startTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400">
+              <i class="fa fa-play w-3"></i>Hora I.
+            </label>
             <input id="startTime" name="startTime" type="time" value="${startTime}" step="60"
                    class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
           </div>
+
+          <!-- Hora Fin -->
           <div>
-            <label for="endTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-stop w-3"></i>Hora F.</label>
+            <label for="endTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400">
+              <i class="fa fa-stop w-3"></i>Hora F.
+            </label>
             <input id="endTime" name="endTime" type="time" value="${endTime}" step="60"
                    class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
           </div>
@@ -720,9 +732,9 @@ function openFoodForm(foodId?: string): void {
     </div>
 
     <!-- 3. PIE DE PÁGINA FIJO (BOTONES SIEMPRE VISIBLES) -->
-    <div class="flex-shrink-0 flex justify-center gap-4 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-      <button type="button" id="cancelFood" class="flex items-center gap-2 px-1 py-1 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times"></i> Cancelar</button>
-      <button type="submit" form="foodForm" id="submitFood" class="flex items-center gap-2 px-1 py-1 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'}"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
+    <div class="flex-shrink-0 flex justify-center gap-10 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <button type="button" id="cancelFood" class="flex items-center gap-2 p-2 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times fa-lg"></i> Cancelar</button>
+      <button type="submit" form="foodForm" id="submitFood" class="flex items-center gap-2 p-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
     </div>
   </div>`;
 
@@ -819,9 +831,9 @@ function openFoodForm(foodId?: string): void {
       priceInputEl.value = minPrice.toString();
       
       if (currentProfit < 0) {
-        UI.toast(`🔧 Precio ajustado: ${oldPrice} → ${newPrice}. Había pérdida de ${formatCurrency(Math.abs(currentProfit))}. Confirma y guarda.`);
+        UI.toast(`Precio ajustado: ${oldPrice} → ${newPrice}. Había pérdida de ${formatCurrency(Math.abs(currentProfit))}.`, 10000);
       } else {
-        UI.toast(`🔧 Precio ajustado: ${oldPrice} → ${newPrice}. Ganancia insuficiente. Confirma y guarda.`);
+        UI.toast(`Precio ajustado: ${oldPrice} → ${newPrice}. Ganancia insuficiente.`, 10000);
       }
       return true;
     }
@@ -852,9 +864,9 @@ function openFoodForm(foodId?: string): void {
       comboPriceInput.value = minComboPrice.toString();
       
       if (currentProfit < 0) {
-        UI.toast(`🔧 Combo ajustado: ${oldPrice} → ${newPrice}. ${quantity}u tenía pérdida de ${formatCurrency(Math.abs(currentProfit))}. Confirma.`);
+        UI.toast(`Combo ajustado: ${oldPrice} → ${newPrice}. ${quantity}u tenía pérdida de ${formatCurrency(Math.abs(currentProfit))}.`, 10000);
       } else {
-        UI.toast(`🔧 Combo ajustado: ${oldPrice} → ${newPrice}. Ganancia insuficiente para ${quantity}u. Confirma.`);
+        UI.toast(`Combo ajustado: ${oldPrice} → ${newPrice}. Ganancia insuficiente para ${quantity}u.`, 10000);
       }
       return true;
     }
@@ -888,8 +900,8 @@ function openFoodForm(foodId?: string): void {
     const price = parseMonetary(rawPrice);
     const costParsed = parseMonetary(costInputEl?.value ?? '0');
 
-    if (isNaN(quantity) || quantity < 2) { UI.toast('La cantidad del combo debe ser al menos 2.'); return; }
-    if (isNaN(price) || price <= 0) { UI.toast('El precio del combo debe ser un número positivo.'); return; }
+    if (isNaN(quantity) || quantity < 2) { UI.toast('El combo debe tener al menos 2 U.'); return; }
+    if (isNaN(price) || price <= 0) { UI.toast('El precio del combo debe ser positivo.'); return; }
     if (tempCombos.some(c => c.quantity === quantity)) { UI.toast('Ya existe un combo con esa cantidad.'); return; }
 
     // Verificar si necesita ajuste automático
@@ -922,6 +934,8 @@ function openFoodForm(foodId?: string): void {
     const endTime = String(data.get('endTime') || '');
 
     if (!name) { UI.toast('Nombre requerido'); return; }
+    if (isNaN(cost) || cost <= 0) { UI.toast('Costo debe ser mayor a cero.'); return; }
+    if (isNaN(price) || price <= 0) { UI.toast('Precio debe ser mayor a cero.'); return; }
     if (FoodRepo.nameExists(name, editing?.id)) { UI.toast('El nombre ya existe'); return; }
     if (!startTime || !endTime) { UI.toast('Debe especificar un horario de venta.'); return; }
 
@@ -946,7 +960,7 @@ function openFoodForm(foodId?: string): void {
         }
       });
       if (comboErrors.length) {
-        UI.toast(`No se guardó: combos inválidos. Revisa los combos y vuelve a intentar.`);
+        UI.toast(`Revisa los combos y vuelve a intentar.`);
         return;
       }
     }
@@ -958,10 +972,10 @@ function openFoodForm(foodId?: string): void {
       if (isLinkedToOrder && !isActive) { UI.toast('Actualización bloqueada: pedido activo'); return; }
       const updated = { ...editing, name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, isActive, combos };
       FoodRepo.update(updated, { startTime, endTime });
-      UI.toast('Comida actualizada exitosamente');
+      UI.toast('Comida actualizada');
     } else {
       FoodRepo.add({ name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, combos }, { startTime, endTime });
-      UI.toast('Comida agregada exitosamente');
+      UI.toast('Comida agregada');
     }
 
     closeModalAndRestoreScroll();
@@ -977,7 +991,7 @@ function openFoodForm(foodId?: string): void {
       if (profit < 0.50) {
         // Solo mostrar advertencia, no ajustar automáticamente hasta intentar guardar
         const minPrice = Number((cost + 0.50).toFixed(2));
-        UI.toast(`⚠️ Ganancia ${formatCurrency(profit)} < ${formatCurrency(0.50)}. Sugerido: ${formatCurrency(minPrice)}.`);
+        UI.toast(`Ganancia ${formatCurrency(profit)} < ${formatCurrency(0.50)}. Sugerido: ${formatCurrency(minPrice)}.`, 10000);
       }
     }
   });
@@ -995,7 +1009,7 @@ function openFoodForm(foodId?: string): void {
       if (totalProfit < minRequiredProfit) {
         // Solo mostrar advertencia, no ajustar automáticamente hasta intentar agregar
         const minPrice = Number((totalCost + minRequiredProfit).toFixed(2));
-        UI.toast(`⚠️ Combo ${quantity}u: ganancia ${formatCurrency(totalProfit)} < mínimo ${formatCurrency(minRequiredProfit)}. Sugerido: ${formatCurrency(minPrice)}.`);
+        UI.toast(`Combo ${quantity}u: ganancia ${formatCurrency(totalProfit)} < mínimo ${formatCurrency(minRequiredProfit)}. Sugerido: ${formatCurrency(minPrice)}.`, 10000);
       }
     }
   });

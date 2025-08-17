@@ -71,7 +71,8 @@ export const UI = {
   },
 
   /** Displays a temporary toast message. */
-  toast(msg: string) {
+    /** Displays a temporary toast message with optional custom duration. */
+  toast(msg: string, duration = 3000) {
     const troot = document.getElementById('toastRoot')!;
     troot.innerHTML = `
       <div class="toast bg-sky-500 text-white rounded-xl p-4 shadow-xl border border-sky-400 
@@ -84,8 +85,8 @@ export const UI = {
         </div>
       </div>
     `;
-    
-    // Añadir la animación de pulso suave personalizada
+
+    // Añadir animaciones si no existen
     if (!document.getElementById('toast-animations')) {
       const style = document.createElement('style');
       style.id = 'toast-animations';
@@ -118,9 +119,9 @@ export const UI = {
       `;
       document.head.appendChild(style);
     }
-    
+
     const toastEl = troot.querySelector('.toast') as HTMLElement;
-    
+
     // Animación de entrada
     setTimeout(() => {
       if (toastEl) {
@@ -128,7 +129,7 @@ export const UI = {
         toastEl.classList.add('toast-show');
       }
     }, 10);
-    
+
     if (UI.toastTimer) window.clearTimeout(UI.toastTimer);
     UI.toastTimer = window.setTimeout(() => {
       if (toastEl) {
@@ -137,8 +138,9 @@ export const UI = {
           troot.innerHTML = '';
         }, 500);
       }
-    }, 3000);
+    }, duration); // 👈 aquí usamos el parámetro
   },
+
 
   /** Opens a modal with HTML content and options. */
   modal(html: string, options: { closeOnBackdropClick?: boolean } = {}): ModalHandle {

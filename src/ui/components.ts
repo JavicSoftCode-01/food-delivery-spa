@@ -55,7 +55,6 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
 
   const combo = order.comboId ? food.combos.find(c => c.id === order.comboId) : null;
 
-  // --- Cálculos iniciales ---
   const unitaryTotal = order.quantity * food.price;
   let comboTotal = 0;
   let hasCombo = false;
@@ -68,10 +67,9 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
   const grandTotal = unitaryTotal + comboTotal;
   const totalItems = order.quantity + (order.comboQuantity || 0);
 
-  // --- Estructura del Modal con Flexbox para scroll interno y cabecera fija ---
   const html = `
   <div class="flex flex-col h-full max-h-[90vh] text-sm sm:text-base bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
-    <!-- CABECERA FIJA -->
+    
     <div class="flex-shrink-0 p-3 sm:p-4 border-b dark:border-dark-border flex items-center justify-between gap-4">
       <div class="flex items-center gap-2">
         <i class="fa-solid fa-file-invoice-dollar text-accent fa-2x"></i>
