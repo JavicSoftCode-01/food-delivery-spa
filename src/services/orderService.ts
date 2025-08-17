@@ -1,7 +1,7 @@
 // src/services/orderService.ts
 import { Order } from '../models';
 import { Storage } from './storage';
-import { uid, nowTs, normalizePhone } from '../utils';
+import { uid, nowTs } from '../utils';
 import { UI } from '../ui/ui';
 import { FoodRepo, FoodSaleRecordRepo } from './foodService';
 
@@ -52,6 +52,17 @@ export const OrderRepo = {
     const all = this._internalGetAll();
     all.push(o);
     this.saveAll(all);
+    const food = FoodRepo.findById(o.foodId);
+    if(food){
+      let totalItems = o.quantity;
+      if (o.comboId && o.comboQuantity) {
+        const combo = food.combos.find(c => c.id === o.comboId);
+        if (combo) {
+          totalItems += combo.quantity * o.comboQuantity;
+        }
+      }
+      FoodRepo.decreaseStock(o, totalItems);
+    }
     return o;
   },
 
@@ -84,17 +95,36 @@ export const OrderRepo = {
     }
 
     if (originalOrder) {
-      if (originalOrder.delivered !== updated.delivered) {
-        if (updated.delivered) { FoodRepo.decreaseStock(updated.foodId, updated.quantity); }
-        else { FoodRepo.increaseStock(updated.foodId, updated.quantity); }
-      } else if (originalOrder.delivered && updated.delivered) {
-        if (originalOrder.foodId !== updated.foodId) {
-          FoodRepo.increaseStock(originalOrder.foodId, originalOrder.quantity);
-          FoodRepo.decreaseStock(updated.foodId, updated.quantity);
+      const originalFood = FoodRepo.findById(originalOrder.foodId);
+      const updatedFood = FoodRepo.findById(updated.foodId);
+
+      if(originalFood && updatedFood){
+        let originalTotalItems = originalOrder.quantity;
+        if (originalOrder.comboId && originalOrder.comboQuantity) {
+          const combo = originalFood.combos.find(c => c.id === originalOrder.comboId);
+          if (combo) {
+            originalTotalItems += combo.quantity * originalOrder.comboQuantity;
+          }
+        }
+
+        let updatedTotalItems = updated.quantity;
+        if (updated.comboId && updated.comboQuantity) {
+          const combo = updatedFood.combos.find(c => c.id === updated.comboId);
+          if (combo) {
+            updatedTotalItems += combo.quantity * updated.comboQuantity;
+          }
+        }
+
+        if (originalOrder.foodId === updated.foodId) {
+          const quantityDiff = updatedTotalItems - originalTotalItems;
+          if (quantityDiff > 0) {
+            FoodRepo.decreaseStock(updated, quantityDiff);
+          } else if (quantityDiff < 0) {
+            FoodRepo.increaseStock(updated, Math.abs(quantityDiff));
+          }
         } else {
-          const quantityDiff = updated.quantity - originalOrder.quantity;
-          if (quantityDiff > 0) { FoodRepo.decreaseStock(updated.foodId, quantityDiff); }
-          else if (quantityDiff < 0) { FoodRepo.increaseStock(updated.foodId, Math.abs(quantityDiff)); }
+          FoodRepo.increaseStock(originalOrder, originalTotalItems);
+          FoodRepo.decreaseStock(updated, updatedTotalItems);
         }
       }
     }
@@ -132,7 +162,7 @@ export const OrderRepo = {
   },
 
   /** Checks for delivery time conflicts within a gap. */
-  checkConflict(deliveryTimeIso: string, phone: string, gapMinutes: number, exceptOrderId?: string): { conflict: boolean; other?: Order } {
+  checkConflict(deliveryTimeIso: string, gapMinutes: number, exceptOrderId?: string): { conflict: boolean; other?: Order } {
     const msGap = Math.abs(gapMinutes) * 60 * 1000;
     const t = new Date(deliveryTimeIso).getTime();
     const others = this.getAll().filter(o => o.id !== exceptOrderId);

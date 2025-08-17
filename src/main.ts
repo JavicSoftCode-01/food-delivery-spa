@@ -173,7 +173,7 @@ function toLocalDateInput(iso?: string): string {
 /** Crea opciones HTML para el select de comidas. */
 function buildFoodOptions(editingFoodId?: string): string {
   const foods = FoodRepo.getAll().filter(f => f.isActive || f.id === editingFoodId);
-  return foods.map(f => `<option ${editingFoodId === f.id ? 'selected' : ''} value="${f.id}" data-price="${f.price}">${f.name} (Stock: ${f.stock})</option>`).join('');
+  return foods.map(f => `<option ${editingFoodId === f.id ? 'selected' : ''} value="${f.id}" data-price="${f.price}">${f.name} (Stk. ${f.stock})</option>`).join('');
 }
 
 /**
@@ -182,166 +182,207 @@ function buildFoodOptions(editingFoodId?: string): string {
  * - Si se edita: comportamiento similar (se sugiere revisar ajuste), pero el formulario cierra al guardar normalmente.
  * @param orderId id del pedido a editar (opcional).
  */
+let isOrderModalOpen = false;
+
 function openOrderForm(orderId?: string): void {
+  if (isOrderModalOpen) {
+    return;
+  }
+
+  isOrderModalOpen = true;
+
   const editing = orderId ? OrderRepo.findById(orderId) : null;
   const optionsHtml = buildFoodOptions(editing?.foodId);
 
-  // Extraer solo la hora si está editando
   const timeOnly = editing ? new Date(editing.deliveryTime).toTimeString().slice(0, 5) : '';
 
   const html = `
-  <div class="relative max-h-[70vh] overflow-y-auto">
-    <div class="pr-8 text-center mb-6">
-      <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
-        ${editing ? 'Editar pedido' : 'Agregar pedido'}
-        <i class="fa-solid fa-file-invoice-dollar fa-lg"></i>
+  <div class="flex flex-col h-full max-h-[calc(90*var(--vh,1vh))] bg-white dark:bg-gray-900 rounded-lg overflow-hidden text-sm sm:text-base">
+    
+    <!-- 1. CABECERA FIJA -->
+    <div class="flex-shrink-0 p-3 sm:p-4">
+      <h3 class="text-lg sm:text-xl font-bold text-center flex items-center justify-center gap-2">
+        <i class="fa-solid fa-file-invoice-dollar"></i>
+        <span>${editing ? 'Editar Pedido' : 'Agregar Pedido'}</span>
       </h3>
     </div>
-    <form id="orderForm" class="space-y-4">
-      <div class="pb-2">
-        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-          <i class="fa fa-user"></i>Nombre completo:
-        </label>
-        <input name="fullName" value="${editing?.fullName ?? ''}" required
-          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1"
-          placeholder="Ingresa el nombre completo" />
-      </div>
 
-      <div class="pb-2">
-        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-          <i class="fa fa-phone"></i> Teléfono:
-        </label>
-        <input name="phone" id="phoneInput" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel"
-          placeholder="Formatos: 09xxxxxxxx, +593xxxxxxxxx"
-          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
-      </div>
-
-      <div class="pb-2">
-        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-          <i class="fa fa-map-marker-alt"></i> Dirección de entrega:
-        </label>
-        <input name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required
-          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1"
-          placeholder="Dirección completa" />
-      </div>
-
-      <div class="grid grid-cols-2 gap-4 pb-2">
+    <!-- 2. CONTENIDO DEL FORMULARIO (LA ÚNICA PARTE CON SCROLL) -->
+    <div class="flex-1 overflow-y-auto p-2">
+      <form id="orderForm" class="space-y-4">
+        
+        <!-- Nombre completo -->
         <div>
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-            <i class="fa fa-clock"></i>Hora:
-          </label>
-          <input name="deliveryTime" type="time" value="${timeOnly}" required
-            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
+          <label for="fullName" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-user w-4"></i>Nombre completo</label>
+          <input id="fullName" name="fullName" value="${editing?.fullName ?? ''}" required
+            class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+            placeholder="Ingresa el nombre completo" />
         </div>
-        <div class="flex items-end">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <div class="relative">
-              <input name="combo" id="comboCheckbox" type="checkbox" ${editing?.combo ? 'checked' : ''} class="sr-only" />
-              <div class="combo-checkbox w-6 h-6 border-2 border-gray-400 dark:border-dark-border rounded flex items-center justify-center transition-colors">
-                <i class="fa fa-check text-white text-sm hidden"></i>
-              </div>
+        
+        <!-- Dirección de entrega -->
+        <div>
+          <label for="deliveryAddress" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-map-marker-alt w-4"></i>Dirección de entrega</label>
+          <input id="deliveryAddress" name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required
+            class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+            placeholder="Dirección completa" />
+        </div>
+        
+        <!-- Rejilla: Teléfono y Hora (2 Columnas) -->
+        <div class="grid grid-cols-2 gap-x-4">
+          <div>
+            <label for="phone" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-phone w-4"></i>Teléfono</label>
+            <input id="phone" name="phone" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel"
+              placeholder="Formatos: 09xxxxxxxx"
+              class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
+          </div>
+          <div>
+            <label for="deliveryTime" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-clock w-4"></i>Hora</label>
+            <input id="deliveryTime" name="deliveryTime" type="time" value="${timeOnly}" required
+              class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
+          </div>
+        </div>
+        
+        <!-- Rejilla: Comida y Combo (2 Columnas) -->
+        <div class="grid grid-cols-2 gap-x-4">
+          <div>
+            <div class="flex justify-between items-center">
+              <label for="foodId" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-utensils w-4"></i>Comida</label>
+              <div id="unitPriceDisplay" class="text-xs text-gray-500 dark:text-gray-400 font-semibold"></div>
             </div>
-            <span class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-              <i class="fa fa-gift"></i> Combo
-            </span>
-          </label>
+            <select id="foodId" name="foodId" class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
+              <option value="">Seleccionar comida...</option>
+              ${optionsHtml}
+            </select>
+          </div>
+          <div id="comboContainer">
+            <label for="comboId" class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-4"></i>Combo</label>
+            <select id="comboId" name="comboId" class="w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
+              <option value="">Sin combo</option>
+            </select>
+          </div>
         </div>
-      </div>
-
-      <div class="pb-2">
-        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-          <i class="fa fa-utensils"></i> Comida:
-        </label>
-        <select name="foodId" id="foodSelect" class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1">
-          <option value="">Seleccionar comida...</option>
-          ${optionsHtml}
-        </select>
-      </div>
-
-      <div class="grid grid-cols-3 gap-4 pb-2">
-        <!-- Cantidad -->
-        <div class="text-center">
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center gap-2 mb-1">
-            <i class="fa fa-sort-numeric-up"></i> Cantidad:
-          </label>
-          <input 
-            name="quantity" 
-            id="quantityInput" 
-            type="number" 
-            min="1" 
-            value="${editing?.quantity ?? 1}"
-            class="w-full text-center text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1" 
-          />
+        
+        <!-- Rejilla: Cantidades y Total (3 Columnas) -->
+        <div class="grid grid-cols-3 gap-x-4">
+          <div class="text-center">
+            <label for="quantity" class="flex items-center justify-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-sort-numeric-up w-3"></i>C. Unitaria</label>
+            <input id="quantity" name="quantity" type="number" min="0" value="${editing?.quantity ?? 0}"
+              class="text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+          <div class="text-center">
+            <label for="comboQuantity" class="flex items-center justify-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-3"></i>C. Combos</label>
+            <input id="comboQuantity" name="comboQuantity" type="number" min="0" value="${editing?.comboQuantity ?? 0}"
+              class="text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+          <div class="text-center">
+            <label class="flex items-center justify-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-calculator w-3"></i>Total</label>
+            <div id="totalPrice" class="font-bold text-xl text-green-600 p-1">$0.00</div>
+          </div>
         </div>
+      </form>
+    </div>
 
-        <!-- Unidad -->
-        <div class="text-center">
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center gap-2 mb-1">
-            <i class="fa fa-tag"></i> Unidad:
-          </label>
-          <div id="unitPrice" class="text-gray-800 dark:text-dark-text text-lg font-semibold p-1 -mt-1">$0.00</div>
-        </div>
+    <!-- 3. PIE DE PÁGINA FIJO (BOTONES SIEMPRE VISIBLES) -->
+    <div class="flex-shrink-0 flex justify-center gap-4 py-4 bg-white dark:bg-gray-800  border-t border-gray-200 dark:border-gray-700">
+      <button type="button" id="cancelOrder" class="flex items-center gap-2 px-1 py-1 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times"></i> Cancelar</button>
+      <button type="submit" form="orderForm" id="submitOrder" class="flex items-center gap-2 px-1 py-1 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'}"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
+    </div>
+  </div>`;
 
-        <!-- Total -->
-        <div class="text-center">
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center gap-2 mb-1">
-            <i class="fa fa-calculator"></i> Total:
-          </label>
-          <div id="totalPrice" class="font-bold text-2xl text-green-600 p-1 -mt-2">$0.00</div>
-        </div>
-      </div>
+  document.documentElement.style.overflow = 'hidden';
 
-      <div class="flex justify-center gap-4 mt-6">
-        <button type="button" id="cancelOrder" class="flex items-center gap-2 px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg">
-          <i class="fa fa-times fa-lg"></i> Cancelar
-        </button>
-        <button type="submit" id="submitOrder" class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-600 transition-colors font-semibold text-lg">
-          <i class="fa ${editing ? 'fa-edit' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}
-        </button>
-      </div>
-    </form>
-  </div>
-`;
+  const setVH = () => {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  };
+  setVH();
+  window.addEventListener('resize', setVH);
 
-  // Abrir modal y obtener elemento
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  // Referencias
-  const phoneInput = element.querySelector('#phoneInput') as HTMLInputElement;
-  const foodSelect = element.querySelector('#foodSelect') as HTMLSelectElement;
-  const quantityInput = element.querySelector('#quantityInput') as HTMLInputElement;
-  const comboCheckbox = element.querySelector('#comboCheckbox') as HTMLInputElement;
-  const unitPriceDiv = element.querySelector('#unitPrice')!;
+  const closeModalAndRestoreScroll = () => { 
+    close(); 
+    document.documentElement.style.overflow = ''; 
+    window.removeEventListener('resize', setVH);
+    isOrderModalOpen = false;
+  };
+
+  const phoneInput = element.querySelector('input[name="phone"]') as HTMLInputElement;
+  const foodSelect = element.querySelector('select[name="foodId"]') as HTMLSelectElement;
+  const comboSelect = element.querySelector('select[name="comboId"]') as HTMLSelectElement;
+  const quantityInput = element.querySelector('input[name="quantity"]') as HTMLInputElement;
+  const comboQuantityInput = element.querySelector('input[name="comboQuantity"]') as HTMLInputElement;
   const totalPriceDiv = element.querySelector('#totalPrice')!;
+  const unitPriceDiv = element.querySelector('#unitPriceDisplay')!;
   const cancelBtn = element.querySelector('#cancelOrder') as HTMLButtonElement;
   const orderForm = element.querySelector('#orderForm') as HTMLFormElement;
   const fullNameInput = orderForm.querySelector('input[name="fullName"]') as HTMLInputElement;
   const deliveryAddressInput = orderForm.querySelector('input[name="deliveryAddress"]') as HTMLInputElement;
   const timeInput = orderForm.querySelector('input[name="deliveryTime"]') as HTMLInputElement;
 
-  // Handlers nombrados para poder removerlos
-  const updateCheckboxStyle = () => {
-    const checkboxContainer = element.querySelector('.combo-checkbox')!;
-    const checkIcon = checkboxContainer.querySelector('.fa-check')!;
-    if (comboCheckbox.checked) {
-      checkboxContainer.classList.add('bg-accent', 'border-accent');
-      checkboxContainer.classList.remove('border-gray-400', 'dark:border-dark-border');
-      checkIcon.classList.remove('hidden');
-    } else {
-      checkboxContainer.classList.remove('bg-accent', 'border-accent');
-      checkboxContainer.classList.add('border-gray-400', 'dark:border-dark-border');
-      checkIcon.classList.add('hidden');
-    }
-  };
 
   const updatePricing = () => {
-    const selectedOption = foodSelect.selectedOptions[0];
-    const unitPrice = selectedOption ? parseFloat(selectedOption.dataset.price || '0') : 0;
-    const quantity = Math.max(1, parseInt(quantityInput.value || '1', 10));
-    const total = unitPrice * quantity;
-    unitPriceDiv.textContent = formatCurrency(unitPrice);
+    const selectedFoodOption = foodSelect.selectedOptions[0];
+    const food = selectedFoodOption ? FoodRepo.findById(selectedFoodOption.value) : null;
+
+    if (!food) {
+      totalPriceDiv.textContent = formatCurrency(0);
+      unitPriceDiv.textContent = '';
+      comboSelect.innerHTML = '<option value="">Sin combo</option>';
+      comboQuantityInput.disabled = true;
+      return;
+    }
+
+    unitPriceDiv.textContent = `${formatCurrency(food.price)}`;
+
+    const comboId = comboSelect.value;
+    const singleQuantity = parseInt(quantityInput.value, 10) || 0;
+    const comboQuantity = parseInt(comboQuantityInput.value, 10) || 0;
+
+    let total = singleQuantity * food.price;
+
+    if (comboId) {
+      const combo = food.combos.find(c => c.id === comboId);
+      if (combo) {
+        total += comboQuantity * combo.price;
+      }
+      comboQuantityInput.disabled = false;
+    } else {
+      comboQuantityInput.disabled = true;
+    }
+
     totalPriceDiv.textContent = formatCurrency(total);
   };
+
+  const populateCombos = (foodId: string) => {
+    const food = FoodRepo.findById(foodId);
+    comboSelect.innerHTML = '<option value="">Sin combo</option>';
+    if (food && food.combos.length > 0) {
+      food.combos.forEach(combo => {
+        const option = document.createElement('option');
+        option.value = combo.id;
+        option.textContent = `${combo.quantity} Uds. por ${formatCurrency(combo.price)}`;
+        if (editing && editing.comboId === combo.id) {
+          option.selected = true;
+        }
+        comboSelect.appendChild(option);
+      });
+    }
+    if (comboSelect.value) {
+      comboQuantityInput.value = editing?.comboQuantity.toString() || '1';
+    }
+    updatePricing();
+  };
+
+  comboSelect.addEventListener('change', () => {
+    if (comboSelect.value) {
+      comboQuantityInput.value = '1';
+    } else {
+      comboQuantityInput.value = '0';
+    }
+    updatePricing();
+  });
+
 
   const handlePhoneInput = (ev: Event) => {
     const input = ev.target as HTMLInputElement;
@@ -367,12 +408,6 @@ function openOrderForm(orderId?: string): void {
     if (errorMessage) UI.toast(errorMessage);
   }, 3000);
 
-  /**
-   * Ajusta el input timeInput al siguiente hueco libre que cumpla el gap.
-   * No guarda automáticamente: se muestra un toast y se retorna al usuario para que confirme (re-entregue el submit).
-   * @param requestedMs tiempo solicitado (ms)
-   * @param gapMinutes brecha en minutos
-   */
   const adjustTimeToGap = (requestedMs: number, gapMinutes: number): number => {
     const gapMs = Math.abs(gapMinutes) * 60 * 1000;
     const othersMs = OrderRepo.getAll()
@@ -384,32 +419,30 @@ function openOrderForm(orderId?: string): void {
     while (true) {
       const conflicting = othersMs.filter(oMs => Math.abs(candidate - oMs) < gapMs);
       if (conflicting.length === 0) break;
-      // ajustar al máximo conflicting + gap
       const maxConflicting = Math.max(...conflicting);
       candidate = Math.max(candidate, maxConflicting + gapMs);
       iter++;
-      if (iter > 50) break; // safety
+      if (iter > 50) break;
     }
     return candidate;
   };
 
-  // submit handler (nombrado para removerlo al cerrar)
   const onSubmit = (ev: Event) => {
-    ev.preventDefault(); // siempre prevenir submit por defecto
+    ev.preventDefault();
     const data = new FormData(orderForm);
     const fullName = normalizeName(String(data.get('fullName') || ''));
     const phone = normalizePhone(String(data.get('phone') || ''));
     const deliveryAddress = normalizeName(String(data.get('deliveryAddress') || ''));
     const foodId = String(data.get('foodId') || '');
-    const quantity = Math.max(1, Number(data.get('quantity')) || 1);
-    const combo = !!data.get('combo');
+    const quantity = parseInt(String(data.get('quantity') || '0'), 10);
+    const comboId = String(data.get('comboId') || '') || null;
+    const comboQuantity = parseInt(String(data.get('comboQuantity') || '0'), 10);
     const timeValue = String(data.get('deliveryTime') || '');
 
     if (!timeValue) { UI.toast('Selecciona una hora de entrega.'); return; }
 
     let deliveryTimeIso = '';
     try {
-      // Crear fecha completa combinando la fecha actual con la hora seleccionada
       const today = new Date();
       const [hours, minutes] = timeValue.split(':');
       today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
@@ -425,7 +458,24 @@ function openOrderForm(orderId?: string): void {
 
     const food = FoodRepo.findById(foodId);
     if (!food) { UI.toast('La comida seleccionada no fue encontrada.'); return; }
-    if (food.stock < quantity) { UI.toast(`Stock insuficiente para "${food.name}". Stock actual: ${food.stock}.`); return; }
+
+    let totalItemsNeeded = quantity;
+    if (comboId) {
+      const combo = food.combos.find(c => c.id === comboId);
+      if (combo) {
+        totalItemsNeeded += combo.quantity * comboQuantity;
+      }
+    }
+
+    if (food.stock < totalItemsNeeded) {
+      UI.toast(`Stock insuficiente para "${food.name}". Stock actual: ${food.stock}. Necesario: ${totalItemsNeeded}`);
+      return;
+    }
+
+    if (quantity === 0 && !comboId) {
+      UI.toast('Agrega al menos un item o un combo al pedido.');
+      return;
+    }
 
     const canonicalPhone = toCanonicalPhone(phone);
     if (canonicalPhone) {
@@ -444,14 +494,11 @@ function openOrderForm(orderId?: string): void {
     const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
     const gap = meta.deliveryGapMinutes ?? 15;
 
-    // comprobar conflicto (usa checkConflict existente)
-    const conflict = OrderRepo.checkConflict(deliveryTimeIso, phone, gap, editing?.id);
+    const conflict = OrderRepo.checkConflict(deliveryTimeIso, gap, editing?.id);
     if (conflict.conflict) {
-      // Ajustar automáticamente el campo de hora al siguiente hueco que cumpla el gap y avisar al admin.
       const requestedMs = new Date(deliveryTimeIso).getTime();
       const adjustedMs = adjustTimeToGap(requestedMs, gap);
 
-      // Formatear adjustedMs a HH:MM local (para el input[type=time])
       const adjustedDate = new Date(adjustedMs);
       const hh = String(adjustedDate.getHours()).padStart(2, '0');
       const mm = String(adjustedDate.getMinutes()).padStart(2, '0');
@@ -459,26 +506,22 @@ function openOrderForm(orderId?: string): void {
 
       UI.toast(`Conflicto de entrega. Hora ajustada para cumplir ${gap} min de intervalo.`);
 
-      // No guardar aún: el usuario puede revisar y volver a presionar guardar.
       return;
     }
 
-    const payload = { fullName, phone, deliveryAddress, foodId, quantity, combo, deliveryTime: deliveryTimeIso };
+    const payload = { fullName, phone, deliveryAddress, foodId, quantity, comboId, comboQuantity, deliveryTime: deliveryTimeIso };
 
     let success = false;
     if (editing) {
-      // edición: comportamiento previo (guardar y cerrar)
       success = OrderRepo.update({ ...editing, ...payload });
       if (success) {
         UI.toast('Pedido actualizado exitosamente.');
-        // cerrar modal y limpiar listeners
         cleanup();
-        close();
+        closeModalAndRestoreScroll();
         renderCurrent();
       }
       return;
     } else {
-      // nuevo pedido: guardar, mostrar toast, NO cerrar; limpiar inputs para nuevo ingreso
       const newOrder = OrderRepo.add(payload);
       if (newOrder) {
         success = true;
@@ -487,49 +530,41 @@ function openOrderForm(orderId?: string): void {
     }
 
     if (success) {
-      // refrescar vistas/subcomponentes (sin cerrar modal)
       renderCurrent();
 
-      // limpiar formulario para nuevo ingreso
-      orderForm.reset(); // revierte a los valores por defecto del HTML
-      // asegurarse de valores por defecto coherentes
-      quantityInput.value = '1';
-      comboCheckbox.checked = false;
-      // limpiar selects/inputs
+      orderForm.reset();
+      quantityInput.value = '0';
+      comboQuantityInput.value = '0';
       foodSelect.value = '';
+      comboSelect.innerHTML = '<option value="">Sin combo</option>';
       phoneInput.value = '';
       fullNameInput.value = '';
       deliveryAddressInput.value = '';
-      // establecer hora por defecto a la hora local actual (HH:MM)
       const now = new Date();
       const nh = String(now.getHours()).padStart(2, '0');
       const nm = String(now.getMinutes()).padStart(2, '0');
       timeInput.value = `${nh}:${nm}`;
 
-      // actualizar vistas internas del modal
-      updateCheckboxStyle();
       updatePricing();
       updatePhoneValidation();
 
-      // poner foco en nombre para entrada rápida del siguiente pedido
       fullNameInput.focus();
     }
   };
 
-  // cleanup y listeners de cancel
   const cleanup = () => {
-    try { orderForm.removeEventListener('submit', onSubmit); } catch {}
-    try { cancelBtn.removeEventListener('click', onCancel); } catch {}
-    try { phoneInput.removeEventListener('input', onPhoneInput); } catch {}
-    try { phoneInput.removeEventListener('blur', onPhoneBlur); } catch {}
-    try { phoneInput.removeEventListener('focus', onPhoneFocus); } catch {}
-    try { foodSelect.removeEventListener('change', onFoodChange); } catch {}
-    try { quantityInput.removeEventListener('input', onQuantityInput); } catch {}
-    try { comboCheckbox.removeEventListener('change', onComboChange); } catch {}
+    orderForm.removeEventListener('submit', onSubmit);
+    cancelBtn.removeEventListener('click', onCancel);
+    phoneInput.removeEventListener('input', onPhoneInput);
+    phoneInput.removeEventListener('blur', onPhoneBlur);
+    phoneInput.removeEventListener('focus', onPhoneFocus);
+    foodSelect.removeEventListener('change', onFoodChange);
+    comboSelect.removeEventListener('change', onComboChange);
+    quantityInput.removeEventListener('input', onQuantityInput);
+    comboQuantityInput.removeEventListener('input', onComboQuantityInput);
   };
 
-  // otros handlers nombrados para remover/añadir
-  const onCancel = () => { cleanup(); close(); };
+  const onCancel = () => { cleanup(); closeModalAndRestoreScroll(); };
   const onPhoneInput = (ev: Event) => { handlePhoneInput(ev); updatePhoneValidation(); debouncedPrefixCheck(); };
   const onPhoneBlur = () => {
     const value = phoneInput.value;
@@ -544,192 +579,344 @@ function openOrderForm(orderId?: string): void {
       phoneInput.classList.add('border-gray-300');
     }
   };
-  const onFoodChange = () => updatePricing();
+  const onFoodChange = () => populateCombos(foodSelect.value);
+  const onComboChange = () => updatePricing();
   const onQuantityInput = () => updatePricing();
-  const onComboChange = () => updateCheckboxStyle();
+  const onComboQuantityInput = () => {
+    if (parseInt(comboQuantityInput.value, 10) === 0) {
+      UI.toast('La cantidad de combos debe ser mayor a 0.');
+    }
+    updatePricing();
+  };
 
-  // Atachamos listeners
   orderForm.addEventListener('submit', onSubmit);
   cancelBtn.addEventListener('click', onCancel);
   phoneInput.addEventListener('input', onPhoneInput);
   phoneInput.addEventListener('blur', onPhoneBlur);
   phoneInput.addEventListener('focus', onPhoneFocus);
   foodSelect.addEventListener('change', onFoodChange);
+  comboSelect.addEventListener('change', onComboChange);
   quantityInput.addEventListener('input', onQuantityInput);
-  comboCheckbox.addEventListener('change', onComboChange);
+  comboQuantityInput.addEventListener('input', onComboQuantityInput);
 
-  // init UI state
-  updateCheckboxStyle();
+  if (editing) {
+    populateCombos(editing.foodId);
+  }
   updatePricing();
   updatePhoneValidation();
 }
-
-
 
 /* -------------------- Helpers / Formulario Comida -------------------- */
 
 /**
  * Abre modal para crear/editar comida.
- * Se asegura de NO usar `once:true` en submit y limpia listeners al cerrar.
- * @param foodId id de comida si se edita, undefined si se crea.
  */
+let isFoodModalOpen = false
+
 function openFoodForm(foodId?: string): void {
+  // Prevenir apertura de modal si ya hay uno abierto
+  if (isFoodModalOpen) {
+    return;
+  }
+
+  isFoodModalOpen = true;
+
   const editing = foodId ? FoodRepo.findById(foodId) : null;
+  let tempCombos = editing ? [...editing.combos] : [];
   const isLinkedToOrder = editing ? OrderRepo.isFoodInActiveOrder(editing.id) : false;
   const activeRecord = editing ? FoodSaleRecordRepo.findLatestActiveByFoodId(editing.id) : null;
   const startTime = activeRecord?.startTime || '08:00';
   const endTime = activeRecord?.endTime || '23:00';
 
-  let stockAndActiveHtml = '';
-  if (editing) {
-    const isDisabled = isLinkedToOrder;
-    const disabledAttr = isDisabled ? 'disabled' : '';
-    const tooltip = isDisabled ? 'title="No se puede desactivar: la comida está en un pedido activo."' : '';
-    const labelClass = isDisabled ? 'cursor-not-allowed opacity-60' : '';
-    stockAndActiveHtml = `
-      <div class="grid grid-cols-2 gap-4">
-        <div class="pb-2">
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-            <i class="fa fa-sort-numeric-up"></i> Stock:
-          </label>
-          <input name="stock" type="number" min="0" value="${editing.stock}" 
-            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
-        </div>
-        <div class="flex items-end pb-2">
-          <label class="flex items-center gap-2 cursor-pointer ${labelClass}" ${tooltip}>
-            <div class="relative">
-              <input name="isActive" type="checkbox" ${editing.isActive ? 'checked' : ''} ${disabledAttr} class="sr-only" />
-              <div class="active-checkbox w-6 h-6 border-2 border-gray-400 dark:border-dark-border rounded flex items-center justify-center transition-colors">
-                <i class="fa fa-check text-white text-sm hidden"></i>
-              </div>
-            </div>
-            <span class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-              <i class="fa fa-power-off"></i> Activo
-            </span>
-          </label>
-        </div>
-      </div>`;
-  } else {
-    stockAndActiveHtml = `
-      <div class="pb-2">
-        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-          <i class="fa fa-sort-numeric-up"></i> Stock inicial:
-        </label>
-        <input name="stock" type="number" min="0" value="0" 
-          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
-      </div>`;
-  }
-
   const html = `
-  <div class="relative max-h-[70vh] overflow-y-auto">
-    <div class="pr-8 text-center mb-6">
-      <h3 class="text-xl font-bold inline-flex items-center gap-2 justify-center">
-        ${editing ? 'Editar Comida' : 'Agregar Comida'}
-        <i class="fa-solid fa-utensils fa-lg"></i>
+  <div class="flex flex-col h-full max-h-[calc(90*var(--vh,1vh))] bg-white dark:bg-gray-900 rounded-lg overflow-hidden text-sm sm:text-base">
+
+    <!-- 1. CABECERA FIJA -->
+    <div class="flex-shrink-0 p-2">
+      <h3 class="text-xl font-bold text-center flex items-center justify-center gap-2">
+        <i class="fa-solid fa-utensils"></i>
+        <span>${editing ? 'Editar Comida' : 'Agregar Comida'}</span>
       </h3>
     </div>
-    <form id="foodForm" class="space-y-4">
-      <div class="pb-2">
-        <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-          <i class="fa fa-tag"></i> Nombre:
-        </label>
-        <input name="name" value="${editing?.name ?? ''}" required
-          class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1"
-          placeholder="Ingresa el nombre de la comida" />
-      </div>
 
-      <div class="grid grid-cols-2 gap-4 pb-2">
+    <!-- 2. CONTENIDO DEL FORMULARIO (LA ÚNICA PARTE CON SCROLL) -->
+    <div class="flex-1 overflow-y-auto p-2 -mt-4">
+      <form id="foodForm" class="space-y-3">
+
+        <!-- Nombre -->
         <div>
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-            <i class="fa fa-dollar-sign"></i> Costo:
-          </label>
-          <input name="cost" type="number" step="0.01" min="0" value="${editing?.cost ?? 0}" 
-            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
+          <label for="name" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-tag w-4"></i>Nombre</label>
+          <input id="name" name="name" value="${editing?.name ?? ''}" required
+            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+            placeholder="Ej: Hamburguesa Clásica" />
         </div>
+
+        <!-- Rejilla 1: Costo, Precio y Estado (3 Columnas) -->
+        <div class="${editing ? 'grid grid-cols-3 gap-x-4' : 'grid grid-cols-2 gap-x-4'}">
+          <div>
+            <label for="cost" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-dollar-sign w-3"></i>Costo</label>
+            <input id="cost" name="cost" type="number" step="0.01" min="0" value="${editing?.cost ?? 0}"
+                   class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+          <div>
+            <label for="price" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-tag w-3"></i>Precio</label>
+            <input id="price" name="price" type="number" step="0.01" min="0" value="${editing?.price ?? 0}"
+                   class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+
+          <!-- Checkbox 'Activo' (Solo en modo edición) -->
+          ${editing ? `
+            <div class="${isLinkedToOrder ? 'opacity-60' : ''}" title="${isLinkedToOrder ? 'No se puede desactivar: la comida está en un pedido activo.' : ''}">
+              <label class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400 ${isLinkedToOrder ? 'cursor-not-allowed' : 'cursor-pointer'}">
+                <i class="fa fa-power-off w-3"></i>Comida
+              </label>
+              <div class="mt-1">
+                <input id="isActive" name="isActive" type="checkbox" ${editing.isActive ? 'checked' : ''} ${isLinkedToOrder ? 'disabled' : ''} class="sr-only peer" />
+                <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-accent relative"></div>
+              </div>
+            </div>
+          ` : ``}
+        </div>
+
+        <!-- Rejilla 2: Stock, Horario (3 Columnas) -->
+        <div class="grid grid-cols-3 gap-x-4">
+          <div>
+            <label for="stock" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-boxes-stacked w-5"></i>Stock</label>
+            <input id="stock" name="stock" type="number" min="0" value="${editing?.stock ?? 0}"
+                   class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+          <div>
+            <label for="startTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-play w-3"></i>Hora I.</label>
+            <input id="startTime" name="startTime" type="time" value="${startTime}" step="60"
+                   class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+          <div>
+            <label for="endTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-stop w-3"></i>Hora F.</label>
+            <input id="endTime" name="endTime" type="time" value="${endTime}" step="60"
+                   class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: COMBOS CON SCROLL INTERNO -->
         <div>
-          <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-            <i class="fa fa-tag"></i> Precio:
-          </label>
-          <input name="price" type="number" step="0.01" min="0" value="${editing?.price ?? 0}" 
-            class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
-        </div>
-      </div>
-
-      ${stockAndActiveHtml}
-
-      <div class="pt-4 pb-2">
-        <p class="text-base text-gray-500 dark:text-gray-400 font-bold mb-4 flex items-center gap-2">
-          <i class="fa fa-clock"></i> Horario de venta para esta sesión
-        </p>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="pb-2">
-            <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-              <i class="fa fa-play"></i> Desde:
+          <div class="flex items-center justify-between">
+            <label class="text-lg font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><i class="fa fa-gift"></i><span id="combosText">Combos</span></label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input id="comboToggle" type="checkbox" class="sr-only peer" ${tempCombos.length > 0 ? 'checked' : ''}>
+              <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-accent"></div>
             </label>
-            <input name="startTime" type="time" value="${startTime}" step="60"
-              class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
           </div>
-          <div class="pb-2">
-            <label class="text-base text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
-              <i class="fa fa-stop"></i> Hasta:
-            </label>
-            <input name="endTime" type="time" value="${endTime}" step="60"
-              class="w-full text-gray-800 dark:text-dark-text bg-transparent border-0 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none p-1 mt-1" />
+          <div id="comboFieldsContainer" class="mt-2 space-y-2 ${tempCombos.length === 0 ? 'hidden' : ''}">
+            <div class="flex items-end gap-2">
+              <div class="flex-1"><label class="block text-sm text-gray-500 dark:text-gray-400">Cantidad</label><input id="comboQuantity" type="number" min="2" placeholder="Ej: 2" class="p-1 w-full bg-transparent border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"></div>
+              <div class="flex-1"><label class="block text-sm text-gray-500 dark:text-gray-400">Precio Total</label><input id="comboPrice" type="number" step="0.01" min="0" placeholder="Ej: 3.50" class="p-1 w-full bg-transparent border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"></div>
+              <button type="button" id="addComboBtn" class="flex-shrink-0 w-10 h-9 bg-blue-500 text-white rounded-lg flex items-center justify-center hover:bg-blue-600"><i class="fa fa-plus"></i></button>
+            </div>
+            <!-- CONTENEDOR DE COMBOS CON SCROLL (MAX 3-4 items visibles) -->
+            <div id="comboList" class="space-y-2 max-h-24 overflow-y-auto pr-2 "></div>
           </div>
         </div>
-      </div>
+      </form>
+    </div>
 
-      <div class="flex justify-center gap-4 mt-6">
-        <button type="button" id="cancelFood" class="flex items-center gap-2 px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg">
-          <i class="fa fa-times fa-lg"></i> Cancelar
-        </button>
-        <button type="submit" id="submitFood" class="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors font-semibold text-lg">
-          <i class="fa ${editing ? 'fa-edit' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}
-        </button>
-      </div>
-    </form>
+    <!-- 3. PIE DE PÁGINA FIJO (BOTONES SIEMPRE VISIBLES) -->
+    <div class="flex-shrink-0 flex justify-center gap-4 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <button type="button" id="cancelFood" class="flex items-center gap-2 px-1 py-1 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times"></i> Cancelar</button>
+      <button type="submit" form="foodForm" id="submitFood" class="flex items-center gap-2 px-1 py-1 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'}"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
+    </div>
   </div>`;
 
+  // --- LÓGICA DE LA FUNCIÓN (SIN CAMBIOS EN ESTRUCTURA) ---
+  document.documentElement.style.overflow = 'hidden';
+
+  const setVH = () => {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  };
+  setVH();
+  window.addEventListener('resize', setVH);
+
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
+
+  // MODIFICACIÓN PRINCIPAL: Resetear la variable cuando se cierre el modal
+  const closeModalAndRestoreScroll = () => {
+    close();
+    document.documentElement.style.overflow = '';
+    window.removeEventListener('resize', setVH);
+    isFoodModalOpen = false; // ← ESTA ES LA LÍNEA CLAVE
+  };
+
+  // --- ELEMENTOS DEL DOM DENTRO DEL MODAL ---
   const cancelBtn = element.querySelector('#cancelFood') as HTMLButtonElement;
   const foodForm = element.querySelector('#foodForm') as HTMLFormElement;
   const activeCheckbox = element.querySelector('input[name="isActive"]') as HTMLInputElement;
+  const comboToggle = element.querySelector('#comboToggle') as HTMLInputElement;
+  const comboFieldsContainer = element.querySelector('#comboFieldsContainer') as HTMLDivElement;
+  const addComboBtn = element.querySelector('#addComboBtn') as HTMLButtonElement;
+  const comboListContainer = element.querySelector('#comboList') as HTMLDivElement;
+  const comboQuantityInput = element.querySelector('#comboQuantity') as HTMLInputElement;
+  const comboPriceInput = element.querySelector('#comboPrice') as HTMLInputElement;
+  const combosText = element.querySelector('#combosText') as HTMLSpanElement;
 
-  // Handler para actualizar el estilo del checkbox de activo
-  const updateActiveCheckboxStyle = () => {
-    if (!activeCheckbox) return;
-    const checkboxContainer = element.querySelector('.active-checkbox')!;
-    const checkIcon = checkboxContainer.querySelector('.fa-check')!;
-    if (activeCheckbox.checked) {
-      checkboxContainer.classList.add('bg-accent', 'border-accent');
-      checkboxContainer.classList.remove('border-gray-400', 'dark:border-dark-border');
-      checkIcon.classList.remove('hidden');
-    } else {
-      checkboxContainer.classList.remove('bg-accent', 'border-accent');
-      checkboxContainer.classList.add('border-gray-400', 'dark:border-dark-border');
-      checkIcon.classList.add('hidden');
+  // Los inputs de costo/precio (necesarios para validaciones de combo al agregar)
+  const costInputEl = element.querySelector('#cost') as HTMLInputElement;
+  const priceInputEl = element.querySelector('#price') as HTMLInputElement;
+
+  /**
+   * Normaliza una entrada monetaria:
+   * - cambia coma por punto
+   * - si el valor es como "075" -> lo convierte a "0.75"
+   * - si el valor es ".75" -> "0.75"
+   * - devuelve número con 2 decimales (Number)
+   */
+  const parseMonetary = (raw: string | FormDataEntryValue | null): number => {
+    let s = String(raw ?? '').trim();
+    if (!s) return 0;
+    s = s.replace(',', '.');
+
+    // "075" => "0.75" (usuario escribió 0 seguido de otros dígitos sin punto)
+    if (/^0\d+$/.test(s)) {
+      s = '0.' + s.slice(1);
     }
+
+    // ".75" => "0.75"
+    if (/^\.\d+$/.test(s)) {
+      s = '0' + s;
+    }
+
+    const n = Number(s);
+    return Number((isNaN(n) ? 0 : n).toFixed(2));
   };
 
-  // Handlers nombrados
-  const cleanup = () => {
-    try { foodForm.removeEventListener('submit', onSubmit); } catch {}
-    try { cancelBtn.removeEventListener('click', onCancel); } catch {}
-    if (activeCheckbox) {
-      try { activeCheckbox.removeEventListener('change', onActiveChange); } catch {}
-    }
+  /**
+   * Calcula la ganancia mínima requerida para combos según la cantidad
+   */
+  const getMinComboProfit = (quantity: number): number => {
+    if (quantity === 2) return 0.75;
+    if (quantity === 3) return 1.20;
+    if (quantity === 4) return 1.60;
+    if (quantity === 5) return 2.00;
+    // Para cantidades mayores: $0.40 por unidad adicional
+    return 0.75 + (quantity - 2) * 0.40;
   };
 
-  const onCancel = () => { cleanup(); close(); };
+  /**
+   * Ajusta automáticamente el precio unitario si no cumple ganancia mínima
+   */
+  const autoAdjustUnitPrice = (): boolean => {
+    const cost = parseMonetary(costInputEl.value);
+    const currentPrice = parseMonetary(priceInputEl.value);
+    const minProfit = 0.50;
+    const minPrice = Number((cost + minProfit).toFixed(2));
+    
+    const currentProfit = Number((currentPrice - cost).toFixed(2));
+    
+    if (currentProfit < minProfit) {
+      const oldPrice = formatCurrency(currentPrice);
+      const newPrice = formatCurrency(minPrice);
+      const actualProfit = formatCurrency(minProfit);
+      
+      priceInputEl.value = minPrice.toString();
+      
+      if (currentProfit < 0) {
+        UI.toast(`🔧 Precio ajustado: ${oldPrice} → ${newPrice}. Había pérdida de ${formatCurrency(Math.abs(currentProfit))}. Confirma y guarda.`);
+      } else {
+        UI.toast(`🔧 Precio ajustado: ${oldPrice} → ${newPrice}. Ganancia insuficiente. Confirma y guarda.`);
+      }
+      return true;
+    }
+    return false;
+  };
 
-  const onActiveChange = () => updateActiveCheckboxStyle();
+  /**
+   * Ajusta automáticamente el precio del combo si no cumple ganancia mínima
+   */
+  const autoAdjustComboPrice = (): boolean => {
+    const cost = parseMonetary(costInputEl.value);
+    const quantity = parseInt(comboQuantityInput.value, 10);
+    const currentComboPrice = parseMonetary(comboPriceInput.value);
+    
+    if (isNaN(quantity) || quantity < 2 || isNaN(currentComboPrice)) return false;
+    
+    const totalCost = Number((cost * quantity).toFixed(2));
+    const minRequiredProfit = getMinComboProfit(quantity);
+    const minComboPrice = Number((totalCost + minRequiredProfit).toFixed(2));
+    
+    const currentProfit = Number((currentComboPrice - totalCost).toFixed(2));
+    
+    if (currentProfit < minRequiredProfit) {
+      const oldPrice = formatCurrency(currentComboPrice);
+      const newPrice = formatCurrency(minComboPrice);
+      const actualProfit = formatCurrency(minRequiredProfit);
+      
+      comboPriceInput.value = minComboPrice.toString();
+      
+      if (currentProfit < 0) {
+        UI.toast(`🔧 Combo ajustado: ${oldPrice} → ${newPrice}. ${quantity}u tenía pérdida de ${formatCurrency(Math.abs(currentProfit))}. Confirma.`);
+      } else {
+        UI.toast(`🔧 Combo ajustado: ${oldPrice} → ${newPrice}. Ganancia insuficiente para ${quantity}u. Confirma.`);
+      }
+      return true;
+    }
+    return false;
+  };
 
+  /**
+   * Renderiza la lista de combos (usa tempCombos)
+   */
+  const renderComboList = () => {
+    comboListContainer.innerHTML = !tempCombos.length ? '<p class="text-xs text-center text-gray-500">Aún no hay combos.</p>' : '';
+    tempCombos.forEach((combo, index) => {
+      const comboCard = document.createElement('div');
+      comboCard.className = 'flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-base';
+      comboCard.innerHTML = `<div><span class="font-semibold">${combo.quantity}</span> unidades por el precio de <span class="font-semibold text-green-500">${formatCurrency(combo.price)}</span></div><button data-index="${index}" class="remove-combo-btn w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center flex-shrink-0"><i class="fa fa-times text-xs"></i></button>`;
+      comboListContainer.appendChild(comboCard);
+    });
+    comboListContainer.querySelectorAll('.remove-combo-btn').forEach(button => button.addEventListener('click', (e) => {
+      tempCombos.splice(parseInt((e.currentTarget as HTMLElement).dataset.index!, 10), 1);
+      renderComboList();
+    }));
+    combosText.textContent = `Combos${tempCombos.length > 0 ? ` (${tempCombos.length})` : ''}`;
+  };
+
+  // --- VALIDACIÓN al agregar UN combo (con ajuste automático) ---
+  addComboBtn.addEventListener('click', () => {
+    const rawQuantity = comboQuantityInput.value;
+    const rawPrice = comboPriceInput.value;
+
+    const quantity = parseInt(rawQuantity, 10);
+    const price = parseMonetary(rawPrice);
+    const costParsed = parseMonetary(costInputEl?.value ?? '0');
+
+    if (isNaN(quantity) || quantity < 2) { UI.toast('La cantidad del combo debe ser al menos 2.'); return; }
+    if (isNaN(price) || price <= 0) { UI.toast('El precio del combo debe ser un número positivo.'); return; }
+    if (tempCombos.some(c => c.quantity === quantity)) { UI.toast('Ya existe un combo con esa cantidad.'); return; }
+
+    // Verificar si necesita ajuste automático
+    if (autoAdjustComboPrice()) {
+      return; // El precio fue ajustado, el usuario debe hacer clic nuevamente
+    }
+
+    // Si llegamos aquí, el combo es válido
+    tempCombos.push({ id: `combo_${Date.now()}`, quantity, price });
+    tempCombos.sort((a, b) => a.quantity - b.quantity);
+    renderComboList();
+    comboQuantityInput.value = '';
+    comboPriceInput.value = '';
+    comboQuantityInput.focus();
+    UI.toast(`Combo agregado: ${quantity} unidades por ${formatCurrency(price)}`);
+  });
+
+  // --- VALIDACIÓN AL ENVIAR FORMULARIO (con ajuste automático) ---
   const onSubmit = (ev: Event) => {
     ev.preventDefault();
     const data = new FormData(foodForm);
+
     const name = normalizeName(String(data.get('name') || ''));
-    const cost = Number(data.get('cost')) || 0;
-    const price = Number(data.get('price')) || 0;
+    // parseo robusto de costo y precio (comas / ceros iniciales)
+    const cost = parseMonetary(data.get('cost'));
+    const price = parseMonetary(data.get('price'));
+
     const stock = Math.max(0, Number(data.get('stock')) || 0);
     const startTime = String(data.get('startTime') || '');
     const endTime = String(data.get('endTime') || '');
@@ -738,32 +925,103 @@ function openFoodForm(foodId?: string): void {
     if (FoodRepo.nameExists(name, editing?.id)) { UI.toast('El nombre ya existe'); return; }
     if (!startTime || !endTime) { UI.toast('Debe especificar un horario de venta.'); return; }
 
+    // Verificar si necesita ajuste automático del precio unitario
+    if (autoAdjustUnitPrice()) {
+      return; // El precio fue ajustado, el usuario debe hacer clic nuevamente
+    }
+
+    // Si el toggle de combos está activo, validar todos los combos antes de guardar
+    const combosToSave = comboToggle.checked ? tempCombos : [];
+    if (comboToggle.checked && combosToSave.length > 0) {
+      const comboErrors: string[] = [];
+      combosToSave.forEach((c) => {
+        const totalCost = Number((cost * c.quantity).toFixed(4));
+        const totalProfit = Number((c.price - totalCost).toFixed(4));
+        const minRequiredProfit = getMinComboProfit(c.quantity);
+        
+        if (totalProfit < 0) {
+          comboErrors.push(`${c.quantity}u @ ${formatCurrency(c.price)} → pérdida ${formatCurrency(Math.abs(totalProfit))} (precio < costo total)`);
+        } else if (totalProfit < minRequiredProfit) {
+          comboErrors.push(`${c.quantity}u @ ${formatCurrency(c.price)} → ganancia total ${formatCurrency(totalProfit)} (mínimo ${formatCurrency(minRequiredProfit)} requerido)`);
+        }
+      });
+      if (comboErrors.length) {
+        UI.toast(`No se guardó: combos inválidos. Revisa los combos y vuelve a intentar.`);
+        return;
+      }
+    }
+
+    // Si pasa validaciones, continúa con la lógica de guardado existente
+    const combos = comboToggle.checked ? tempCombos : [];
     if (editing) {
       const isActive = !!data.get('isActive');
       if (isLinkedToOrder && !isActive) { UI.toast('Actualización bloqueada: pedido activo'); return; }
-      const updated = { ...editing, name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, isActive };
+      const updated = { ...editing, name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, isActive, combos };
       FoodRepo.update(updated, { startTime, endTime });
-      UI.toast('Comida actualizada');
+      UI.toast('Comida actualizada exitosamente');
     } else {
-      FoodRepo.add({ name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock }, { startTime, endTime });
-      UI.toast('Comida agregada');
+      FoodRepo.add({ name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, combos }, { startTime, endTime });
+      UI.toast('Comida agregada exitosamente');
     }
 
-    cleanup();
-    close();
+    closeModalAndRestoreScroll();
     renderCurrent();
   };
 
-  // Attach listeners
+  // Agregar listeners para validación en tiempo real
+  priceInputEl.addEventListener('blur', () => {
+    const cost = parseMonetary(costInputEl.value);
+    const price = parseMonetary(priceInputEl.value);
+    if (cost > 0 && price > 0) {
+      const profit = Number((price - cost).toFixed(2));
+      if (profit < 0.50) {
+        // Solo mostrar advertencia, no ajustar automáticamente hasta intentar guardar
+        const minPrice = Number((cost + 0.50).toFixed(2));
+        UI.toast(`⚠️ Ganancia ${formatCurrency(profit)} < ${formatCurrency(0.50)}. Sugerido: ${formatCurrency(minPrice)}.`);
+      }
+    }
+  });
+
+  comboPriceInput.addEventListener('blur', () => {
+    const cost = parseMonetary(costInputEl.value);
+    const quantity = parseInt(comboQuantityInput.value, 10);
+    const comboPrice = parseMonetary(comboPriceInput.value);
+    
+    if (cost > 0 && quantity >= 2 && comboPrice > 0) {
+      const totalCost = Number((cost * quantity).toFixed(2));
+      const totalProfit = Number((comboPrice - totalCost).toFixed(2));
+      const minRequiredProfit = getMinComboProfit(quantity);
+      
+      if (totalProfit < minRequiredProfit) {
+        // Solo mostrar advertencia, no ajustar automáticamente hasta intentar agregar
+        const minPrice = Number((totalCost + minRequiredProfit).toFixed(2));
+        UI.toast(`⚠️ Combo ${quantity}u: ganancia ${formatCurrency(totalProfit)} < mínimo ${formatCurrency(minRequiredProfit)}. Sugerido: ${formatCurrency(minPrice)}.`);
+      }
+    }
+  });
+
   foodForm.addEventListener('submit', onSubmit);
-  cancelBtn.addEventListener('click', onCancel);
+  cancelBtn.addEventListener('click', closeModalAndRestoreScroll);
+
   if (activeCheckbox) {
-    activeCheckbox.addEventListener('change', onActiveChange);
+    const toggleVisual = activeCheckbox.nextElementSibling as HTMLDivElement;
+    if (!isLinkedToOrder) {
+      toggleVisual.style.cursor = 'pointer';
+      toggleVisual.addEventListener('click', () => {
+        activeCheckbox.checked = !activeCheckbox.checked;
+      });
+    }
   }
 
-  // Inicializar estado del checkbox
-  updateActiveCheckboxStyle();
+  comboToggle.addEventListener('change', () => {
+    comboFieldsContainer.classList.toggle('hidden', !comboToggle.checked);
+    if (!comboToggle.checked) { tempCombos = []; renderComboList(); }
+  });
+
+  renderComboList();
 }
+
+
 
 /** Muestra modal con historial de ventas y detalles. */
 function openSalesHistoryModal(foodId: string): void {
@@ -773,6 +1031,12 @@ function openSalesHistoryModal(foodId: string): void {
   let modalRef: { close: () => void; element: HTMLElement } | null = null;
 
   const renderDetails = (record: FoodSaleRecord) => {
+    const comboSalesHtml = Object.entries(record.comboSales || {}).map(([comboId, comboSale]) => {
+      const combo = food.combos.find(c => c.id === comboId);
+      if (!combo) return '';
+      return `<p class="flex justify-between"><strong><i class="fa fa-gift w-5 text-gray-500 dark:text-gray-400"></i>Combo ${combo.quantity}x:</strong> <span>${comboSale.count} vendidos (${formatCurrency(comboSale.price * comboSale.count)})</span></p>`;
+    }).join('');
+
     const detailHtml = `
       <button id="closeHistory" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20"><i class="fa fa-times text-lg"></i></button>
       <div class="p-1">
@@ -784,7 +1048,8 @@ function openSalesHistoryModal(foodId: string): void {
           <p class="flex justify-between"><strong><i class="fa fa-cubes w-5 text-gray-500 dark:text-gray-400"></i>Stock Inicial:</strong> <span>${record.initialStock}</span></p>
           <p class="flex justify-between"><strong><i class="fa fa-tag w-5 text-gray-500 dark:text-gray-400"></i>Precio:</strong> <span>${formatCurrency(record.unitPrice)}</span></p>
           <p class="flex justify-between"><strong><i class="fa fa-dollar-sign w-5 text-gray-500 dark:text-gray-400"></i>Costo:</strong> <span>${formatCurrency(record.unitCost)}</span></p>
-          <p class="flex justify-between"><strong><i class="fa fa-chart-line w-5 text-gray-500 dark:text-gray-400"></i>Vendidos:</strong> <span>${record.quantitySold}</span></p>
+          <p class="flex justify-between"><strong><i class="fa fa-chart-line w-5 text-gray-500 dark:text-gray-400"></i>Vendidos:</strong> <span>${record.quantitySoldSingle}</span></p>
+          ${comboSalesHtml}
           <p class="flex justify-between"><strong><i class="fa fa-toggle-on w-5 text-gray-500 dark:text-gray-400"></i>Estado:</strong> <span class="font-semibold ${record.isActive ? 'text-green-600' : 'text-red-500'}">${record.isActive ? 'Activa' : 'Finalizada'}</span></p>
         </div>
       </div>`;
@@ -800,13 +1065,22 @@ function openSalesHistoryModal(foodId: string): void {
     if (history.length === 0) {
       listContent = '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No hay historial de ventas para esta comida.</p>';
     } else {
-      const listItems = history.map(record => `
+      const listItems = history.map(record => {
+        const singleItemsSold = record.quantitySoldSingle || 0;
+        const totalItemsFromCombos = Object.values(record.comboSales || {}).reduce((acc, comboSale) => acc + (comboSale.count * comboSale.quantity), 0);
+        const totalSoldItems = singleItemsSold + totalItemsFromCombos;
+
+        const totalSingleRevenue = singleItemsSold * record.unitPrice;
+        const totalComboRevenue = Object.values(record.comboSales || {}).reduce((acc, comboSale) => acc + (comboSale.count * comboSale.price), 0);
+        const totalRevenue = totalSingleRevenue + totalComboRevenue;
+
+        return `
         <li class="border-b dark:border-dark-border last:border-b-0">
           <button data-record-id="${record.id}" class="w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center record-item transition-colors">
             <div class="font-medium"><i class="fa fa-calendar-day mr-2 text-gray-400"></i> ${record.recordDate} <span class="text-xs text-gray-500 dark:text-gray-400">(${record.startTime} - ${record.endTime})</span></div>
-            <div class="text-sm">Vendidos: <strong>${record.quantitySold}</strong> <span class="text-xs ${Math.abs(record.unitPrice - food.price) > 0.001 ? 'text-blue-500' : ''}">(${formatCurrency(record.unitPrice)})</span></div>
+            <div class="text-sm">Vendidos: <strong>${totalSoldItems}</strong> <span class="text-xs ${Math.abs(record.unitPrice - food.price) > 0.001 ? 'text-blue-500' : ''}">(${formatCurrency(totalRevenue)})</span></div>
           </button>
-        </li>`).join('');
+        </li>`}).join('');
       listContent = `<ul class="bg-white dark:bg-dark-bg rounded-lg border dark:border-dark-border">${listItems}</ul>`;
     }
 

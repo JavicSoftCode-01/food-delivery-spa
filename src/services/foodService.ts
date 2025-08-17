@@ -1,5 +1,5 @@
 // src/services/foodService.ts
-import { Food, FoodSaleRecord } from '../models';
+import {Food, FoodSaleRecord, ID, Order} from '../models';
 import { Storage } from './storage';
 import { uid, nowTs } from '../utils';
 
@@ -81,7 +81,8 @@ export const FoodRepo = {
       initialStock: obj.stock,
       unitPrice: obj.price,
       unitCost: obj.cost,
-      quantitySold: 0,
+      quantitySoldSingle: 0,
+      comboSales: {},
       isActive: true
     });
 
@@ -117,7 +118,8 @@ export const FoodRepo = {
         initialStock: updated.stock,
         unitPrice: updated.price,
         unitCost: updated.cost,
-        quantitySold: 0,
+        quantitySoldSingle: 0,
+        comboSales: {},
         isActive: true,
       });
     } else if (updated.isActive && !original.isActive) {
@@ -141,7 +143,8 @@ export const FoodRepo = {
           initialStock: updated.stock,
           unitPrice: updated.price,
           unitCost: updated.cost,
-          quantitySold: 0,
+          quantitySoldSingle: 0,
+          comboSales: {},
           isActive: true
         });
       }
@@ -176,40 +179,67 @@ export const FoodRepo = {
     return this.getAll().some(f => f.id !== exceptId && f.name.trim().toLowerCase() === n);
   },
 
-  /** Calculates total profit from all foods. */
+  /** Calculates total profit from all sale records. */
   totalProfit(): number {
-    return this.getAll().reduce((s, f) => s + (f.amountSold || 0) * ((f.price || 0) - (f.cost || 0)), 0);
+    const allRecords = FoodSaleRecordRepo.getAll();
+    return allRecords.reduce((totalProfit, record) => {
+      const profitFromSingles = (record.unitPrice - record.unitCost) * (record.quantitySoldSingle || 0);
+
+      const profitFromCombos = Object.values(record.comboSales || {}).reduce((comboProfit, comboSale) => {
+        const revenue = comboSale.price * comboSale.count;
+        const cost = record.unitCost * comboSale.quantity * comboSale.count;
+        return comboProfit + (revenue - cost);
+      }, 0);
+
+      return totalProfit + profitFromSingles + profitFromCombos;
+    }, 0);
   },
 
-  /** Decreases stock and increases sold amount for a food, updates active record. */
-  decreaseStock(foodId: string, quantity: number): void {
+  decreaseStock(order: Order, totalItems: number): void {
     const allFoods = this.getAll();
-    const foodIndex = allFoods.findIndex(f => f.id === foodId);
+    const foodIndex = allFoods.findIndex(f => f.id === order.foodId);
     if (foodIndex > -1) {
-      allFoods[foodIndex].stock = Math.max(0, allFoods[foodIndex].stock - quantity);
-      allFoods[foodIndex].amountSold += quantity;
+      allFoods[foodIndex].stock = Math.max(0, allFoods[foodIndex].stock - totalItems);
+      allFoods[foodIndex].amountSold += totalItems;
       this.saveAll(allFoods);
 
-      const activeRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(foodId);
+      const activeRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(order.foodId);
       if (activeRecord) {
-        activeRecord.quantitySold += quantity;
+        if (order.quantity > 0) {
+            activeRecord.quantitySoldSingle = (activeRecord.quantitySoldSingle || 0) + order.quantity;
+        }
+        if (order.comboId && order.comboQuantity > 0) {
+            const food = allFoods[foodIndex];
+            const combo = food.combos.find(c => c.id === order.comboId);
+            if (combo) {
+                if (!activeRecord.comboSales) activeRecord.comboSales = {};
+                if (!activeRecord.comboSales[order.comboId]) {
+                    activeRecord.comboSales[order.comboId] = { quantity: combo.quantity, price: combo.price, count: 0 };
+                }
+                activeRecord.comboSales[order.comboId].count += order.comboQuantity;
+            }
+        }
         FoodSaleRecordRepo.update(activeRecord);
       }
     }
   },
 
-  /** Increases stock and decreases sold amount for a food, updates active record. */
-  increaseStock(foodId: string, quantity: number): void {
+  increaseStock(order: Order, totalItems: number): void {
     const allFoods = this.getAll();
-    const foodIndex = allFoods.findIndex(f => f.id === foodId);
+    const foodIndex = allFoods.findIndex(f => f.id === order.foodId);
     if (foodIndex > -1) {
-      allFoods[foodIndex].stock += quantity;
-      allFoods[foodIndex].amountSold = Math.max(0, allFoods[foodIndex].amountSold - quantity);
+      allFoods[foodIndex].stock += totalItems;
+      allFoods[foodIndex].amountSold = Math.max(0, allFoods[foodIndex].amountSold - totalItems);
       this.saveAll(allFoods);
 
-      const activeRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(foodId);
+      const activeRecord = FoodSaleRecordRepo.findLatestActiveByFoodId(order.foodId);
       if (activeRecord) {
-        activeRecord.quantitySold = Math.max(0, activeRecord.quantitySold - quantity);
+        if (order.quantity > 0) {
+            activeRecord.quantitySoldSingle = Math.max(0, (activeRecord.quantitySoldSingle || 0) - order.quantity);
+        }
+        if (order.comboId && order.comboQuantity > 0 && activeRecord.comboSales && activeRecord.comboSales[order.comboId]) {
+            activeRecord.comboSales[order.comboId].count = Math.max(0, activeRecord.comboSales[order.comboId].count - order.comboQuantity);
+        }
         FoodSaleRecordRepo.update(activeRecord);
       }
     }

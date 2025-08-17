@@ -1,4 +1,5 @@
-// src/utils.ts
+
+                                    // src/utils.ts
 /** Generates a unique ID with optional prefix. */
 export const uid = (prefix = '') => prefix + Math.random().toString(36).slice(2, 9);
 

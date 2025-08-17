@@ -25,34 +25,38 @@ export const UI = {
       <header class="bg-white dark:bg-dark-bg-secondary rounded-xl p-4 shadow-sm border dark:border-dark-border flex items-center justify-between gap-3 mb-4">
         <div class="flex-grow">
           <h1 id="main-title" class="font-bold">Gestión Delivery</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">JavicSoftCode · Back-End Developer</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">JavicSoftCode · Developer</p>
         </div>
         <div id="header-extra" class="flex-shrink-0 flex items-center justify-center h-12 w-14 translate-x-2">
           <!-- El contador o botón de archivar se renderizará aquí -->
         </div>
       </header>
       <main id="mainArea"></main>
-      <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-dark-bg-secondary/95 backdrop-blur-sm border-t dark:border-dark-border safe-bottom p-2 md:bottom-4 md:left-1/2 md:-translate-x-1/2 rounded-lg md:px-2 md:py-1 md:w-auto flex items-center justify-between gap-2" role="navigation" aria-label="Navegación principal">
-  <button data-screen="dashboard" class="nav-item flex-1 md:w-auto flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg" aria-label="Dashboard">
-    <i class="fa fa-chart-simple text-2xl" aria-hidden="true"></i>
-    <span class="text-sm font-semibold">Dashboard</span>
-  </button>
-  <button data-screen="clients" class="nav-item flex-1 md:w-auto flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg" aria-label="Clientes">
-    <i class="fa fa-users text-2xl" aria-hidden="true"></i>
-    <span class="text-sm font-semibold">Clientes</span>
-  </button>
-  <button data-screen="foods" class="nav-item flex-1 md:w-auto flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg" aria-label="Comidas">
-    <i class="fa fa-bowl-food text-2xl" aria-hidden="true"></i>
-    <span class="text-sm font-semibold">Comidas</span>
-  </button>
-  <button data-screen="settings" class="nav-item flex-1 md:w-auto flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg" aria-label="Ajustes">
-    <i class="fa fa-gear text-2xl" aria-hidden="true"></i>
-    <span class="text-sm font-semibold">Ajustes</span>
-  </button>
-</nav>
+      <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-dark-bg-secondary/95 backdrop-blur-sm border-t dark:border-dark-border z-50" role="navigation" aria-label="Navegación principal">
+        <div class="max-w-3xl mx-auto px-2 py-1.5">
+          <div class="flex items-center justify-center gap-1 sm:gap-2">
+            <button data-screen="dashboard" class="nav-item flex-1 max-w-[80px] sm:max-w-none flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 rounded-lg transition-all duration-200" aria-label="Dashboard">
+              <i class="fa fa-chart-simple text-2xl" aria-hidden="true"></i>
+              <span class="text-xs font-semibold">Dashboard</span>
+            </button>
+            <button data-screen="clients" class="nav-item flex-1 max-w-[80px] sm:max-w-none flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 rounded-lg transition-all duration-200" aria-label="Clientes">
+              <i class="fa fa-users text-2xl" aria-hidden="true"></i>
+              <span class="text-xs font-semibold">Clientes</span>
+            </button>
+            <button data-screen="foods" class="nav-item flex-1 max-w-[80px] sm:max-w-none flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 rounded-lg transition-all duration-200" aria-label="Comidas">
+              <i class="fa fa-bowl-food text-2xl" aria-hidden="true"></i>
+              <span class="text-xs font-semibold">Comidas</span>
+            </button>
+            <button data-screen="settings" class="nav-item flex-1 max-w-[80px] sm:max-w-none flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 rounded-lg transition-all duration-200" aria-label="Ajustes">
+              <i class="fa fa-gear text-2xl" aria-hidden="true"></i>
+              <span class="text-xs font-semibold">Ajustes</span>
+            </button>
+          </div>
+        </div>
+      </nav>
 
       <div id="modalRoot"></div>
-      <div id="toastRoot" class="fixed right-4 bottom-24"></div>
+      <div id="toastRoot" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4"></div>
     `;
 
     document.querySelectorAll<HTMLElement>('#bottomNav .nav-item').forEach((b) => {
@@ -69,11 +73,71 @@ export const UI = {
   /** Displays a temporary toast message. */
   toast(msg: string) {
     const troot = document.getElementById('toastRoot')!;
-    troot.innerHTML = `<div class="toast bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 rounded-lg p-3 shadow">${msg}</div>`;
+    troot.innerHTML = `
+      <div class="toast bg-sky-500 text-white rounded-xl p-4 shadow-xl border border-sky-400 
+                  transform transition-all duration-500 ease-out scale-95 opacity-0
+                  backdrop-blur-sm font-medium text-center text-sm text-lg
+                  animate-pulse-gentle">
+        <div class="flex items-center justify-center gap-2">
+          <i class="fa fa-info-circle fa-lg"></i>
+          <span>${msg}</span>
+        </div>
+      </div>
+    `;
+    
+    // Añadir la animación de pulso suave personalizada
+    if (!document.getElementById('toast-animations')) {
+      const style = document.createElement('style');
+      style.id = 'toast-animations';
+      style.textContent = `
+        @keyframes pulse-gentle {
+          0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.3), 0 4px 6px -2px rgba(14, 165, 233, 0.1);
+          }
+          50% { 
+            transform: scale(1.02);
+            box-shadow: 0 20px 35px -5px rgba(14, 165, 233, 0.4), 0 8px 12px -2px rgba(14, 165, 233, 0.15);
+          }
+        }
+        .animate-pulse-gentle {
+          animation: pulse-gentle 2s ease-in-out infinite;
+        }
+        .toast-enter {
+          transform: translateY(-100%) scale(0.9);
+          opacity: 0;
+        }
+        .toast-show {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+        .toast-exit {
+          transform: translateY(-100%) scale(0.9);
+          opacity: 0;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    const toastEl = troot.querySelector('.toast') as HTMLElement;
+    
+    // Animación de entrada
+    setTimeout(() => {
+      if (toastEl) {
+        toastEl.classList.remove('scale-95', 'opacity-0');
+        toastEl.classList.add('toast-show');
+      }
+    }, 10);
+    
     if (UI.toastTimer) window.clearTimeout(UI.toastTimer);
     UI.toastTimer = window.setTimeout(() => {
-      troot.innerHTML = '';
-    }, 3500);
+      if (toastEl) {
+        toastEl.classList.add('toast-exit');
+        setTimeout(() => {
+          troot.innerHTML = '';
+        }, 500);
+      }
+    }, 3000);
   },
 
   /** Opens a modal with HTML content and options. */
@@ -87,9 +151,9 @@ export const UI = {
     const zIndex = 20 + (mRoot.children.length * 10);
 
     modalWrapper.innerHTML = `
-      <div class="modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: ${zIndex};">
-        <div class="modal-content bg-white dark:bg-dark-bg-secondary rounded-xl w-full max-w-xl p-4 shadow-lg relative
-            -mt-[80px] sm:-mt-[60px] md:-mt-[80px] lg:-mt-[100px]">
+      <div class="modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center p-2" style="z-index: ${zIndex};">
+        <div class="modal-content bg-white dark:bg-dark-bg-secondary rounded-xl w-full max-w-xl p-2 shadow-lg relative
+            -mt-[70px] sm:-mt-[60px] md:-mt-[80px] lg:-mt-[100px]">
           ${html}
         </div>
       </div>

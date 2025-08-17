@@ -11,8 +11,15 @@ export interface FoodSaleRecord {
   initialStock: number;
   unitPrice: number;
   unitCost: number;
-  quantitySold: number;
+  quantitySoldSingle: number;
+  comboSales: Record<ID, { quantity: number, price: number, count: number }>; // comboId -> { quantity, price, count }
   isActive: boolean;   // Controla si esta sesión de venta específica está activa
+}
+
+export interface Combo {
+  id: ID;
+  quantity: number;
+  price: number;
 }
 
 export interface Food {
@@ -24,6 +31,7 @@ export interface Food {
   amountSold: number;
   isActive: boolean;
   createdAt: number;
+  combos: Combo[];
 }
 
 export interface Order {
@@ -32,8 +40,9 @@ export interface Order {
   phone: string;
   deliveryAddress: string;
   foodId: ID;
-  quantity: number;
-  combo: boolean;
+  quantity: number; // Cantidad de items individuales
+  comboId: ID | null;
+  comboQuantity: number; // Cantidad de combos
   deliveryTime: string;
   createdAt: number;
   delivered: boolean;

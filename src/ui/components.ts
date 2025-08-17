@@ -10,7 +10,7 @@ import { updateGlobalHeaderState } from '../main';
 function showCallModal(phone: string) {
   const whatsappPhone = formatPhoneForWhatsApp(phone);
   const html = `<div class="relative">
-    <button id="closeCall" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-55 z-10"><i class="fa fa-times text-lg"></i></button>
+    <button id="closeCall" class="absolute right-1 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-55 z-10"><i class="fa fa-times text-lg"></i></button>
     <div class="text-center">
       <h3 class="text-lg font-semibold mb-4">Contactar Cliente <i class="fa fa-user"></i></h3>
       <div class="flex gap-3 justify-center">
@@ -36,7 +36,10 @@ function showCallModal(phone: string) {
   });
 }
 
-/** Shows details of an order in a modal. */
+/**
+ * Muestra los detalles de un pedido en un modal profesional, claro y responsivo,
+ * con scroll interno y cabecera fija siguiendo el patrón del modal de ventas.
+ */
 function showOrderDetails(orderId: string, onUpdate: () => void) {
   const order = OrderRepo.findById(orderId);
   if (!order) {
@@ -45,86 +48,240 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
   }
 
   const food = FoodRepo.findById(order.foodId);
-  const unitPrice = food?.price || 0;
-  const total = unitPrice * order.quantity;
+  if (!food) {
+      UI.toast('Comida no encontrada para este pedido.');
+      return;
+  }
 
-  const html = `<button id="closeDetails" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20"><i class="fa fa-times text-lg"></i></button>
-    <div class="relative max-h-[75vh] overflow-y-auto">
-      <div class="pr-8 p-4">
-        <h3 class="text-xl font-bold mb-4 text-center">Detalles del Pedido <i class="fa-solid fa-file-invoice-dollar fa-lg"></i></h3>
-        <div class="space-y-4">
-          <div class="border-b dark:border-dark-border pb-2">
-            <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Cliente:</label>
-            <div class="text-gray-800 dark:text-dark-text">${order.fullName}</div>
-          </div>
-          <div class="border-b dark:border-dark-border pb-2">
-            <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Hora de entrega:</label>
-            <div class="text-gray-800 dark:text-dark-text">${formatTime(order.deliveryTime)}</div>
-          </div>
-          <div class="border-b dark:border-dark-border pb-2">
-            <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Dirección:</label>
-            <div class="text-gray-800 dark:text-dark-text">${order.deliveryAddress}</div>
-          </div>
-          <div class="border-b dark:border-dark-border pb-2">
-            <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Comida:</label>
-            <div class="text-gray-800 dark:text-dark-text">${food?.name || 'No encontrado'}</div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 border-b dark:border-dark-border pb-2">
+  const combo = order.comboId ? food.combos.find(c => c.id === order.comboId) : null;
+
+  // --- Cálculos iniciales ---
+  const unitaryTotal = order.quantity * food.price;
+  let comboTotal = 0;
+  let hasCombo = false;
+  
+  if (combo && order.comboQuantity > 0) {
+    comboTotal = order.comboQuantity * combo.price;
+    hasCombo = true;
+  }
+  
+  const grandTotal = unitaryTotal + comboTotal;
+  const totalItems = order.quantity + (order.comboQuantity || 0);
+
+  // --- Estructura del Modal con Flexbox para scroll interno y cabecera fija ---
+  const html = `
+  <div class="flex flex-col h-full max-h-[90vh] text-sm sm:text-base bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
+    <!-- CABECERA FIJA -->
+    <div class="flex-shrink-0 p-3 sm:p-4 border-b dark:border-dark-border flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-file-invoice-dollar text-accent fa-2x"></i>
+        <h3 class="text-base sm:text-xl font-bold truncate">
+          Pedido de ${order.fullName}
+        </h3>
+      </div>
+      <button id="closeDetails" class="w-7 h-7 sm:w-8 sm:h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 flex-shrink-0">
+        <i class="fa fa-times text-base"></i>
+      </button>
+    </div>
+
+    <!-- CONTENIDO CON SCROLL INDEPENDIENTE -->
+    <div class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">
+      <div class="space-y-4">
+        
+        <!-- SECCIÓN 1: INFORMACIÓN DEL CLIENTE -->
+        <div class="space-y-2 border-b dark:border-dark-border pb-2">
+          <div class="grid grid-cols-2 gap-2">
+
+            <!-- Entrega -->
             <div>
-              <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Cantidad:</label>
-              <div class="text-gray-800 dark:text-dark-text">${order.quantity}</div>
+              <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+                <i class="fa fa-clock w-4 text-center"></i>Entrega:
+              </label>
+              <div class="text-gray-900 dark:text-dark-text font-medium pl-6 text-sm">
+                ${formatTime(order.deliveryTime)}
+              </div>
             </div>
+
+            <!-- Dirección -->
             <div>
-              <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Combo:</label>
-              <div class="text-gray-800 dark:text-dark-text">${order.combo ? 'Sí' : 'No'}</div>
+              <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+                <i class="fa fa-map-marker-alt w-4 text-center"></i>Dirección:
+              </label>
+              <div class="text-gray-900 dark:text-dark-text font-medium pl-6 text-sm">
+                ${order.deliveryAddress}
+              </div>
             </div>
+
           </div>
-          <div class="grid grid-cols-2 gap-4 border-b dark:border-dark-border pb-2">
-            <div>
-              <label class="text-base text-gray-500 dark:text-gray-400 font-bold">P. unitario:</label>
-              <div class="text-gray-800 dark:text-dark-text">${formatCurrency(unitPrice)}</div>
-            </div>
-            <div>
-              <label class="text-base text-gray-500 dark:text-gray-400 font-bold">Total:</label>
-              <div class="font-bold text-lg text-green-600">${formatCurrency(total)}</div>
+        </div>
+
+        <!-- SECCIÓN 2: INFORMACIÓN DEL PRODUCTO -->
+        <div class="border-b dark:border-dark-border">
+          <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+            <i class="fa fa-bowl-food w-4 text-center"></i>Producto:
+          </label>
+          <div class="ml-6 py-1">
+            <div class="flex justify-between items-center">
+              <span class="font-medium text-sm">${food?.name || 'No encontrado'}</span>
+              <span class="text-base text-gray-500">${formatCurrency(food.price)} c/u</span>
             </div>
           </div>
         </div>
-        <div class="flex justify-between items-center mt-4 gap-4">
-          <button id="callFromDetails" data-phone="${order.phone}" class="flex items-center gap-2 px-4 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900">
-            <i class="fa fa-phone"></i><span class="font-bold">Llamar</span>
-          </button>
-          <div class="flex items-center gap-2">
-            <span class="text-base text-gray-500 dark:text-gray-400 font-bold">Entregado:</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input id="detailsToggle" data-id="${order.id}" type="checkbox" ${order.delivered ? 'checked' : ''} class="sr-only">
-              <div id="toggleBg" class="toggle-bg-details w-11 h-6 ${order.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative">
-                <div id="toggleDot" class="toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${order.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
-              </div>
+
+        <!-- SECCIÓN 3: RESUMEN DE CANTIDADES -->
+        <div class="grid grid-cols-3 gap-2 text-center border-b dark:border-dark-border">
+
+          <!-- Unitarios -->
+          <div>
+            <label class="flex flex-row items-center justify-center gap-2 text-gray-600 dark:text-gray-300 font-semibold">
+              <i class="fa fa-shopping-cart text-sm"></i>
+              <span class="text-xs">Unitarios</span>
             </label>
+            <div class="text-gray-900 dark:text-dark-text text-lg font-bold">
+              ${order.quantity}
+            </div>
+          </div>
+
+          <!-- Combos -->
+          <div>
+            <label class="flex flex-row items-center justify-center gap-2 text-gray-600 dark:text-gray-300 font-semibold">
+              <i class="fa fa-boxes-stacked text-sm"></i>
+              <span class="text-xs">Combos</span>
+            </label>
+            <div class="text-gray-900 dark:text-dark-text text-lg font-bold">
+              ${order.comboQuantity || 0}
+            </div>
+          </div>
+
+          <!-- Total Items -->
+          <div>
+            <label class="flex flex-row items-center justify-center gap-2 text-gray-600 dark:text-gray-300 font-semibold">
+              <i class="fa fa-calculator text-sm"></i>
+              <span class="text-xs">Total Items</span>
+            </label>
+            <div class="text-gray-900 dark:text-dark-text text-lg font-bold">
+              ${totalItems}
+            </div>
+          </div>
+
+        </div>
+
+
+        <!-- SECCIÓN 4: DESGLOSE DE PRECIOS -->
+        <div class="">
+          <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 font-semibold">
+            <i class="fa fa-receipt"></i>Desglose de Precios
+          </label>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-left text-gray-500 dark:text-gray-400">
+                  <th class="py-1 font-semibold">Tipo</th>
+                  <th class="py-1 font-semibold text-center">Cant.</th>
+                  <th class="py-1 font-semibold text-center">Precio</th>
+                  <th class="py-1 font-semibold text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b dark:border-dark-border">
+                  <td class="py-1 pr-2 text-xs">Venta Unitaria</td>
+                  <td class="py-1 text-center text-xs">${order.quantity}</td>
+                  <td class="py-1 text-center text-xs">${formatCurrency(food.price)}</td>
+                  <td class="py-1 text-right font-semibold text-xs">${formatCurrency(unitaryTotal)}</td>
+                </tr>
+                ${hasCombo ? `
+                <tr class="border-b dark:border-dark-border">
+                  <td class="py-1 pr-2 text-xs">Combo (${combo!.quantity}u)</td>
+                  <td class="py-1 text-center text-xs">${order.comboQuantity}</td>
+                  <td class="py-1 text-center text-xs">${formatCurrency(combo!.price)}</td>
+                  <td class="py-1 text-right font-semibold text-xs">${formatCurrency(comboTotal)}</td>
+                </tr>
+                ` : ''}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 5: TOTAL Y ACCIONES -->
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border-t dark:border-dark-border p-2">
+          <div class="text-center border-b dark:border-dark-border pb-2 mb-2">
+            <label class="flex items-center justify-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
+              <i class="fa fa-coins"></i>Total del Pedido
+            </label>
+            <div class="font-bold text-green-700 dark:text-green-400 text-xl">
+              ${formatCurrency(grandTotal)}
+            </div>
+          </div>
+          
+          <!-- ACCIONES -->
+          <div class="flex flex-col sm:flex-row justify-between items-center gap-2">
+            <button id="callFromDetails" data-phone="${order.phone}" 
+                    class="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors text-sm">
+              <i class="fa fa-phone"></i>
+              <span class="font-bold">Llamar</span>
+            </button>
+            
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-600 dark:text-gray-300 font-semibold">
+                Estado:
+              </span>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium ${order.delivered ? 'text-green-600' : 'text-red-600'}">
+                  ${order.delivered ? 'Entregado' : 'Pendiente'}
+                </span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input id="detailsToggle" data-id="${order.id}" type="checkbox" ${order.delivered ? 'checked' : ''} class="sr-only">
+                  <div id="toggleBg" class="w-10 h-5 ${order.delivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative transition-colors">
+                    <div id="toggleDot" class="absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${order.delivered ? 'translate-x-5' : 'translate-x-0'}"></div>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>`;
+    </div>
+  </div>`;
+
+  // --- Lógica para mostrar el modal y bloquear scroll del fondo ---
+  document.documentElement.style.overflow = 'hidden';
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
-  element.querySelector('#closeDetails')!.addEventListener('click', close);
-  element.querySelector('#callFromDetails')!.addEventListener('click', (e) => showCallModal((e.currentTarget as HTMLElement).dataset.phone!));
+
+  const closeModalAndRestoreScroll = () => {
+    close();
+    document.documentElement.style.overflow = '';
+  };
+
+  // --- Event Listeners ---
+  element.querySelector('#closeDetails')!.addEventListener('click', closeModalAndRestoreScroll);
+  
+  element.querySelector('#callFromDetails')!.addEventListener('click', (e) => {
+    const phone = (e.currentTarget as HTMLElement).dataset.phone!;
+    showCallModal(phone);
+  });
 
   const toggle = element.querySelector('#detailsToggle') as HTMLInputElement;
 
   const updateToggleVisuals = (isDelivered: boolean) => {
     const toggleBg = element.querySelector('#toggleBg')!;
     const toggleDot = element.querySelector('#toggleDot')!;
-    toggleBg.className = `toggle-bg-details w-11 h-6 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative`;
-    toggleDot.className = `toggle-dot-details absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
+    const statusText = element.querySelector('.text-sm.font-medium')!;
+    
+    toggleBg.className = `w-10 h-5 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative transition-colors`;
+    toggleDot.className = `absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
+    statusText.textContent = isDelivered ? 'Entregado' : 'Pendiente';
+    statusText.className = `text-sm font-medium ${isDelivered ? 'text-green-600' : 'text-red-600'}`;
   };
 
   toggle.addEventListener('change', () => {
     const currentOrder = OrderRepo.findById(orderId);
     if (!currentOrder) return;
+    
     handleDeliveryToggle(currentOrder, toggle, updateToggleVisuals, () => {
       onUpdate();
+      closeModalAndRestoreScroll();
+      showOrderDetails(orderId, onUpdate);
     });
   });
 }
@@ -174,102 +331,173 @@ export function renderDashboard(container: HTMLElement): void {
   UI.updateHeaderContent;
 }
 
-/** Shows details of a sales record in a modal. */
+/**
+ * Muestra los detalles de un registro de venta en un modal profesional, claro y responsivo,
+ * con scroll interno y cabecera fija.
+ */
 function showSalesRecordDetails(record: FoodSaleRecord, food: Food, onBackToHistory: () => void) {
-const html = `<div class="relative max-h-[90vh] overflow-y-auto">
-  <button id="closeRecordDetails" class="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 z-20">
-    <i class="fa fa-times text-lg"></i>
-  </button>
-  <div class="pr-8 p-4">
-    <button id="backToHistoryList" class="text-sm text-accent hover:underline mb-4 flex items-center gap-2">
-      <i class="fa fa-arrow-left"></i>Volver a la lista
-    </button>
-    <h3 class="text-2xl font-bold mb-4 text-center">Detalles ${record.recordDate}</h3>
-    <div class="space-y-4">
+    // --- 1. Cálculos iniciales (se mantienen igual) ---
+    const singleItemsSold = record.quantitySoldSingle || 0;
+    const comboSalesEntries = Object.entries(record.comboSales || {});
+    const totalSingleRevenue = singleItemsSold * record.unitPrice;
+    let totalItemsFromCombos = 0;
+    let totalComboRevenue = 0;
+    comboSalesEntries.forEach(([_, sale]) => {
+        totalItemsFromCombos += sale.quantity * sale.count;
+        totalComboRevenue += sale.price * sale.count;
+    });
+    const totalSoldItems = singleItemsSold + totalItemsFromCombos;
+    const totalRevenue = totalSingleRevenue + totalComboRevenue;
+    const totalProfit = totalRevenue - (totalSoldItems * record.unitCost);
 
-      <div class="border-b dark:border-dark-border pb-2">
-        <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-          <i class="fa fa-bowl-food"></i> Comida:
-        </label>
-        <div class="text-gray-900 dark:text-dark-text text-lg">${food.name}</div>
+    // --- 2. Generación del HTML para la tabla de desglose de ventas (sin cambios) ---
+    const salesBreakdownHtml = `
+        <tr class="border-b dark:border-dark-border">
+            <td class="py-2 pr-2">Venta Unitaria</td>
+            <td class="py-2 text-center">${singleItemsSold}</td>
+            <td class="py-2 text-center">${formatCurrency(record.unitPrice)}</td>
+            <td class="py-2 text-right font-semibold">${formatCurrency(totalSingleRevenue)}</td>
+        </tr>
+        ${comboSalesEntries.map(([_, sale]) => `
+        <tr class="border-b dark:border-dark-border">
+            <td class="py-2 pr-2">Combo (${sale.quantity}u) x ${sale.count}</td>
+            <td class="py-2 text-center">${sale.quantity * sale.count}</td>
+            <td class="py-2 text-center">${formatCurrency(sale.price)}</td>
+            <td class="py-2 text-right font-semibold">${formatCurrency(sale.price * sale.count)}</td>
+        </tr>
+        `).join('')}
+    `;
+
+    // --- 3. Estructura del Modal con Flexbox para scroll interno y cabecera fija ---
+    const html = `
+    <div class="flex flex-col h-full max-h-[90vh] text-sm sm:text-base bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
+      <div class="flex-shrink-0 p-3 sm:p-4 border-b dark:border-dark-border flex items-center justify-between gap-4">
+        <button id="backToHistoryList" class="text-accent hover:underline flex items-center gap-1.5 text-sm">
+          <i class="fa fa-arrow-left"></i>
+          <span class="hidden sm:inline">Volver</span>
+        </button>
+        <h3 class="text-base sm:text-xl font-bold text-center truncate">
+          Detalles ${record.recordDate}
+        </h3>
+        <button id="closeRecordDetails" class="w-7 h-7 sm:w-8 sm:h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110 flex-shrink-0">
+          <i class="fa fa-times text-base"></i>
+        </button>
       </div>
 
-      <div class="border-b dark:border-dark-border pb-2">
-        <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-          <i class="fa fa-clock"></i> Horario:
-        </label>
-        <div class="text-gray-900 dark:text-dark-text text-lg">${formatClockTime(record.startTime)} - ${formatClockTime(record.endTime)}</div>
+      <!-- CONTENIDO CON SCROLL INDEPENDIENTE -->
+      <div class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">
+        <div>
+          <!-- SECCIÓN 1: INFORMACIÓN GENERAL -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 border-b dark:border-dark-border pb-2">
+            <div>
+              <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold"><i class="fa fa-bowl-food w-4 text-center"></i>Comida:</label>
+              <div class="text-gray-900 dark:text-dark-text font-medium pl-6">${food.name}</div>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold"><i class="fa fa-clock w-4 text-center"></i>Horario:</label>
+              <div class="text-gray-900 dark:text-dark-text font-medium pl-6">${formatClockTime(record.startTime)} - ${formatClockTime(record.endTime)}</div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 2: RESUMEN DE INVENTARIO -->
+          <div class="grid grid-cols-3 gap-2 sm:gap-4 text-center mt-3">
+            <div>
+              <label class="flex flex-row items-center justify-center gap-2 text-gray-600 dark:text-gray-300 font-semibold">
+                <i class="fa-solid fa-boxes-stacked"></i> Stock
+              </label>
+              <div class="text-gray-900 dark:text-dark-text text-lg sm:text-xl font-bold">
+                ${record.initialStock}
+              </div>
+            </div>
+
+            <div>
+              <label class="flex flex-row items-center justify-center gap-2 text-gray-600 dark:text-gray-300 font-semibold">
+                <i class="fa fa-shopping-cart"></i> Vendido
+              </label>
+              <div class="text-gray-900 dark:text-dark-text text-lg sm:text-xl font-bold">
+                ${totalSoldItems}
+              </div>
+            </div>
+
+            <div>
+              <label class="flex flex-row items-center justify-center gap-2 text-gray-600 dark:text-gray-300 font-semibold">
+                <i class="fa-solid fa-box"></i> Disponible
+              </label>
+              <div class="text-gray-900 dark:text-dark-text text-lg sm:text-xl font-bold">
+                ${record.initialStock - totalSoldItems}
+              </div>
+            </div>
+          </div>
+
+          
+          <!-- SECCIÓN 3: DESGLOSE DE VENTAS -->
+          <div class="border-t dark:border-dark-border pt-3">
+            <label class="flex items-center gap-2 text-base sm:text-lg text-gray-600 dark:text-gray-300 font-semibold mb-2"><i class="fa fa-receipt"></i>Desglose de Ventas</label>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs sm:text-sm">
+                <thead>
+                  <tr class="text-left text-gray-500 dark:text-gray-400">
+                    <th class="py-1 font-semibold">Tipo</th>
+                    <th class="py-1 font-semibold text-center">Unidades</th>
+                    <th class="py-1 font-semibold text-center">Precio</th>
+                    <th class="py-1 font-semibold text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>${salesBreakdownHtml}</tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- SECCIÓN 4: RESUMEN FINANCIERO -->
+          <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4">
+             <div class="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+               <div>
+                  <label class="text-xs sm:text-sm text-gray-500">Costo Unit.</label>
+                  <div class="font-semibold text-sm sm:text-base">${formatCurrency(record.unitCost)}</div>
+               </div>
+                <div>
+                  <label class="text-xs sm:text-sm text-gray-500">Precio Unit.</label>
+                  <div class="font-semibold text-sm sm:text-base">${formatCurrency(record.unitPrice)}</div>
+               </div>
+               <div>
+                  <label class="text-xs sm:text-sm text-gray-500">Lucro Unit.</label>
+                  <div class="font-bold text-sm sm:text-base text-blue-600 dark:text-blue-400">${formatCurrency(record.unitPrice - record.unitCost)}</div>
+               </div>
+             </div>
+             <div class="grid grid-cols-2 gap-2 sm:gap-4 pt-3 border-t dark:border-dark-border text-center">
+                <div>
+                  <label class="flex items-center justify-center gap-2 text-base sm:text-lg font-semibold text-gray-600 dark:text-gray-300"><i class="fa fa-piggy-bank"></i>Lucro Total</label>
+                  <div class="font-bold text-blue-700 dark:text-blue-400 text-xl sm:text-2xl">${formatCurrency(totalProfit)}</div>
+                </div>
+                <div>
+                  <label class="flex items-center justify-center gap-2 text-base sm:text-lg font-semibold text-gray-600 dark:text-gray-300"><i class="fa fa-coins"></i>Venta Total</label>
+                  <div class="font-bold text-green-700 dark:text-green-400 text-xl sm:text-2xl">${formatCurrency(totalRevenue)}</div>
+                </div>
+             </div>
+          </div>
+
+        </div>
       </div>
+    </div>`;
 
-      <div class="grid grid-cols-3 gap-4 border-b dark:border-dark-border pb-2">
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa-solid fa-boxes-stacked"></i> Stock:
-          </label>
-          <div class="text-gray-900 dark:text-dark-text text-lg flex items-center justify-center h-full -mt-2">${record.initialStock}</div>
-        </div>
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa fa-shopping-cart"></i> Vend.:
-          </label>
-          <div class="text-gray-900 dark:text-dark-text text-lg flex items-center justify-center h-full -mt-2">${record.quantitySold}</div>
-        </div>
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa-solid fa-boxes-stacked"></i> Resto:
-          </label>
-          <div class="text-gray-900 dark:text-dark-text text-lg flex items-center justify-center h-full -mt-2">${(record.initialStock - record.quantitySold)}</div>
-        </div>
-      </div>
+    // --- 4. Lógica para mostrar el modal y BLOQUEAR el scroll del fondo ---
+    
+    // Bloquea el scroll de la página principal
+    document.documentElement.style.overflow = 'hidden';
 
-      <div class="grid grid-cols-3 gap-4 border-b dark:border-dark-border pb-2">
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa fa-money-bill"></i> Costo:
-          </label>
-          <div class="text-gray-900 dark:text-dark-text text-lg flex items-center justify-center h-full -mt-2">${formatCurrency(record.unitCost)}</div>
-        </div>
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa fa-dollar-sign"></i> Precio:
-          </label>
-          <div class="text-gray-900 dark:text-dark-text text-lg flex items-center justify-center h-full -mt-2">${formatCurrency(record.unitPrice)}</div>
-        </div>
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa fa-chart-line"></i> Lucro:
-          </label>
-          <div class="font-bold text-blue-700 text-lg flex items-center justify-center h-full -mt-2">${formatCurrency(record.unitPrice - record.unitCost)}</div>
-        </div>
-      </div>
+    const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-      <div class="grid grid-cols-2 gap-4 border-b dark:border-dark-border pb-2">
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa fa-piggy-bank"></i> Lucro T.:
-          </label>
-          <div class="font-bold text-blue-700 text-xl flex h-full -mt-1">${formatCurrency((record.unitPrice - record.unitCost) * record.quantitySold)}</div>
-        </div>
-        <div>
-          <label class="flex items-center gap-2 text-lg text-gray-600 dark:text-gray-300 font-semibold">
-            <i class="fa fa-coins"></i> Total:
-          </label>
-          <div class="font-bold text-green-700 text-xl flex h-full -mt-1">${formatCurrency(record.quantitySold * record.unitPrice)}</div>
-        </div>
-      </div>
+    const closeModalAndRestoreScroll = () => {
+        close();
+        // Restaura el scroll de la página principal
+        document.documentElement.style.overflow = '';
+    };
 
-    </div>
-  </div>
-</div>`;
-
-
-
-  const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
-  element.querySelector('#closeRecordDetails')!.addEventListener('click', close);
-  element.querySelector('#backToHistoryList')!.addEventListener('click', () => {
-    close();
-    onBackToHistory();
-  });
+    element.querySelector('#closeRecordDetails')!.addEventListener('click', closeModalAndRestoreScroll);
+    element.querySelector('#backToHistoryList')!.addEventListener('click', () => {
+        closeModalAndRestoreScroll();
+        onBackToHistory();
+    });
 }
 
 /** Opens a modal showing sales history for a food. */
@@ -290,7 +518,14 @@ function openSalesHistoryModal(foodId: string) {
     } else {
       const listItems = history
         .map((record) => {
-          const totalRevenue = record.quantitySold * record.unitPrice;
+          const singleItemsSold = record.quantitySoldSingle || 0;
+          const totalItemsFromCombos = Object.values(record.comboSales || {}).reduce((acc, comboSale) => acc + (comboSale.count * comboSale.quantity), 0);
+          const totalSoldItems = singleItemsSold + totalItemsFromCombos;
+
+          const totalSingleRevenue = singleItemsSold * record.unitPrice;
+          const totalComboRevenue = Object.values(record.comboSales || {}).reduce((acc, comboSale) => acc + (comboSale.count * comboSale.price), 0);
+          const totalRevenue = totalSingleRevenue + totalComboRevenue;
+
           return `
             <div class="border-b dark:border-dark-border last:border-b-0">
               <button data-record-id="${record.id}" class="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 record-detail-btn transition-colors">
@@ -309,7 +544,7 @@ function openSalesHistoryModal(foodId: string) {
                   </div>
                   <div class="text-right">
                     <div class="font-semibold text-gray-900 dark:text-dark-text">
-                      Vendidos: <span class="text-gray-600 dark:text-gray-300">${record.quantitySold}</span>
+                      Vendidos: <span class="text-gray-600 dark:text-gray-300">${totalSoldItems}</span>
                     </div>
                     <div class="text-sm text-green-600">
                       ${formatCurrency(totalRevenue)}
@@ -457,6 +692,7 @@ export function renderFoods(container: HTMLElement): void {
   refreshFoodListView();
 }
 
+/** Renders the settings screen. */
 export function renderSettings(container: HTMLElement): void {
   // Leer meta actual
   const metaRaw = localStorage.getItem('fd_meta_v1') || '{}';
