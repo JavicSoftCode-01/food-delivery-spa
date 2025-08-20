@@ -718,7 +718,10 @@ export function renderFoods(container: HTMLElement): void {
           </div>
           <div class="flex items-center gap-1 p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 transition-colors hover:bg-orange-100 dark:hover:bg-orange-900/30">
             <i class="fa-solid fa-boxes-stacked text-orange-500 text-2xl"></i>
-            <span class="font-semibold"><strong>${f.stock}</strong></span>
+            <span class="font-semibold">
+              <strong>${f.stock - OrderRepo.getReservedStockForFood(f.id)}</strong>
+              <span class="text-xs text-gray-500">(${f.stock})</span>
+            </span>
           </div>
           <div class="flex items-center gap-1 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 transition-colors hover:bg-green-100 dark:hover:bg-green-900/30">
             <i class="fa-solid fa-dollar-sign text-green-500 text-2xl"></i>
@@ -1044,14 +1047,8 @@ export function handleDeliveryToggle(
 
       setTimeout(async () => {
         try {
-          const updatedOrder = {
-            ...order,
-            delivered: isChecked,
-            deliveredAt: isChecked ? new Date().toISOString() : null
-          };
-
-          // Actualizar en la base de datos
-          const success = await OrderRepo.update(updatedOrder);
+          // Llama a la nueva función específica para cambiar el estado de entrega
+          const success = await OrderRepo.updateDeliveryStatus(order.id, isChecked);
 
           if (success) {
             // ✅ ACTUALIZACIÓN EXITOSA - Restaurar estado visual correcto
