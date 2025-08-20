@@ -179,22 +179,21 @@ function buildFoodOptions(editingFoodId?: string): string {
 /**
  * Abre el modal del formulario de pedido para crear/editar.
  * - Si se crea (no editing): al intentar guardar y existir conflicto, ajusta el input de hora automáticamente y muestra toast.
- * - Si se edita: comportamiento similar (se sugiere revisar ajuste), pero el formulario cierra al guardar normalmente.
- * @param orderId id del pedido a editar (opcional).
  */
-let isOrderModalOpen = false;
-
 function openOrderForm(orderId?: string): void {
-  if (isOrderModalOpen) {
+  if (document.getElementById('orderForm')) {
     return;
   }
-
-  isOrderModalOpen = true;
 
   const editing = orderId ? OrderRepo.findById(orderId) : null;
   const optionsHtml = buildFoodOptions(editing?.foodId);
 
   const timeOnly = editing ? new Date(editing.deliveryTime).toTimeString().slice(0, 5) : '';
+
+  // 🔒 Determinar si el pedido está entregado (bloqueo de edición)
+  const isDelivered = editing ? editing.delivered : false;
+  const disabledAttr = isDelivered ? 'disabled' : '';
+  const disabledClass = isDelivered ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700' : '';
 
   const html = `
   <div class="flex flex-col h-full max-h-[calc(90*var(--vh,1vh))] bg-white dark:bg-gray-900 rounded-lg overflow-hidden text-sm sm:text-base">
@@ -204,7 +203,9 @@ function openOrderForm(orderId?: string): void {
       <h3 class="text-xl font-bold text-center flex items-center justify-center gap-2">
         <i class="fa-solid fa-file-invoice-dollar"></i>
         <span>${editing ? 'Editar Pedido' : 'Agregar Pedido'}</span>
+        ${isDelivered ? '<span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">🔒 ENTREGADO</span>' : ''}
       </h3>
+      ${isDelivered ? '<div class="text-center text-sm text-gray-600 dark:text-gray-400 mt-1">Los campos están bloqueados porque el pedido fue entregado</div>' : ''}
     </div>
 
     <!-- 2. CONTENIDO DEL FORMULARIO (LA ÚNICA PARTE CON SCROLL) -->
@@ -214,31 +215,31 @@ function openOrderForm(orderId?: string): void {
         <!-- Nombre completo -->
         <div>
           <label for="fullName" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-user w-4"></i>Nombres</label>
-          <input id="fullName" name="fullName" value="${editing?.fullName ?? ''}" required
-            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+          <input id="fullName" name="fullName" value="${editing?.fullName ?? ''}" required ${disabledAttr}
+            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}"
             placeholder="Ingresar nombres completos" />
         </div>
         
         <!-- Dirección de entrega -->
         <div>
           <label for="deliveryAddress" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-map-marker-alt w-4"></i>Dirección</label>
-          <input id="deliveryAddress" name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required
-            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"
+          <input id="deliveryAddress" name="deliveryAddress" value="${editing?.deliveryAddress ?? ''}" required ${disabledAttr}
+            class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}"
             placeholder="Ingresar dirección" />
         </div>
         
         <!-- Rejilla: Teléfono y Hora (2 Columnas) -->
-        <div class="grid grid-cols-[60%_40%] gap-x-4">
+        <div class="grid grid-cols-2 gap-x-4">
           <div>
             <label for="phone" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-phone w-4"></i>Teléfono</label>
-            <input id="phone" name="phone" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel"
+            <input id="phone" name="phone" value="${editing?.phone ?? ''}" required type="tel" inputmode="tel" ${disabledAttr}
               placeholder="Formato 09 o +593"
-              class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
+              class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}" />
           </div>
-          <div class="max-w-[90px]">
+          <div>
             <label for="deliveryTime" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-clock w-4"></i>Hora</label>
-            <input id="deliveryTime" name="deliveryTime" type="time" value="${timeOnly}" required
-              class="text-base w-full bg-transparent p-1 mb-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none" />
+            <input id="deliveryTime" name="deliveryTime" type="time" value="${timeOnly}" required ${disabledAttr}
+              class="text-base w-full bg-transparent p-1 mb-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}" />
           </div>
         </div>
         
@@ -249,14 +250,14 @@ function openOrderForm(orderId?: string): void {
               <label for="foodId" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-utensils w-4"></i>Comida</label>
               <div id="unitPriceDisplay" class="text-sm text-gray-500 dark:text-gray-400 font-semibold"></div>
             </div>
-            <select id="foodId" name="foodId" class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
+            <select id="foodId" name="foodId" ${disabledAttr} class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}">
               <option value="">Elegir comida</option>
               ${optionsHtml}
             </select>
           </div>
           <div id="comboContainer">
             <label for="comboId" class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-4"></i>Combo</label>
-            <select id="comboId" name="comboId" class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none">
+            <select id="comboId" name="comboId" ${disabledAttr} class="text-base w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}">
               <option value="">Sin combo</option>
             </select>
           </div>
@@ -266,13 +267,13 @@ function openOrderForm(orderId?: string): void {
         <div class="grid grid-cols-3 gap-x-4">
           <div class="text-center">
             <label for="quantity" class="flex items-center justify-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-sort-numeric-up w-4"></i>Cant. U.</label>
-            <input id="quantity" name="quantity" type="number" min="0" value="${editing?.quantity ?? 0}"
-              class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+            <input id="quantity" name="quantity" type="number" min="0" value="${editing?.quantity ?? 0}" ${disabledAttr}
+              class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}"/>
           </div>
           <div class="text-center">
             <label for="comboQuantity" class="flex items-center justify-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-gift w-4"></i>Combos</label>
-            <input id="comboQuantity" name="comboQuantity" type="number" min="0" value="${editing?.comboQuantity ?? 0}"
-              class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none"/>
+            <input id="comboQuantity" name="comboQuantity" type="number" min="0" value="${editing?.comboQuantity ?? 0}" ${disabledAttr}
+              class="text-base text-center w-full bg-transparent p-1 border-b border-gray-300 dark:border-dark-border focus:border-accent focus:outline-none ${disabledClass}"/>
           </div>
           <div class="text-center">
             <label class="flex items-center justify-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400"><i class="fa fa-calculator w-3"></i>Total</label>
@@ -283,12 +284,16 @@ function openOrderForm(orderId?: string): void {
     </div>
 
     <!-- 3. PIE DE PÁGINA FIJO (BOTONES SIEMPRE VISIBLES) -->
-    <div class="flex-shrink-0 flex justify-center gap-10 py-3 bg-white dark:bg-gray-800  border-t border-gray-200 dark:border-gray-700">
+    <div class="flex-shrink-0 flex justify-center gap-10 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       <button type="button" id="cancelOrder" class="flex items-center gap-2 p-2 text-white bg-red-500 rounded-lg hover:bg-red-600 font-semibold text-base"><i class="fa fa-times fa-lg"></i> Cancelar</button>
-      <button type="submit" form="orderForm" id="submitOrder" class="flex items-center gap-2 p-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base"><i class="fa ${editing ? 'fa-save' : 'fa-plus'} fa-lg"></i> ${editing ? 'Actualizar' : 'Agregar'}</button>
+      <button type="submit" form="orderForm" id="submitOrder" 
+              class="flex items-center gap-2 p-2 bg-accent text-white rounded-lg font-semibold text-base transition-all duration-200 ${editing && !isDelivered ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/90'}" 
+              ${editing && !isDelivered ? 'disabled' : ''}>
+        <i class="fa ${editing ? 'fa-save' : 'fa-plus'} fa-lg"></i> 
+        ${editing ? 'Actualizar' : 'Agregar'}
+      </button>
     </div>
   </div>`;
-
 
   document.documentElement.style.overflow = 'hidden';
 
@@ -301,11 +306,10 @@ function openOrderForm(orderId?: string): void {
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  const closeModalAndRestoreScroll = () => { 
-    close(); 
-    document.documentElement.style.overflow = ''; 
+  const closeModalAndRestoreScroll = () => {
+    close();
+    document.documentElement.style.overflow = '';
     window.removeEventListener('resize', setVH);
-    isOrderModalOpen = false;
   };
 
   const phoneInput = element.querySelector('input[name="phone"]') as HTMLInputElement;
@@ -320,7 +324,72 @@ function openOrderForm(orderId?: string): void {
   const fullNameInput = orderForm.querySelector('input[name="fullName"]') as HTMLInputElement;
   const deliveryAddressInput = orderForm.querySelector('input[name="deliveryAddress"]') as HTMLInputElement;
   const timeInput = orderForm.querySelector('input[name="deliveryTime"]') as HTMLInputElement;
+  const submitBtn = element.querySelector('#submitOrder') as HTMLButtonElement;
 
+  // 🔍 DETECCIÓN DE CAMBIOS PARA HABILITAR/DESHABILITAR BOTÓN DE ACTUALIZAR
+  let originalData: any = null;
+
+  const captureOriginalData = () => {
+    if (editing) {
+      originalData = {
+        fullName: fullNameInput.value,
+        phone: phoneInput.value,
+        deliveryAddress: deliveryAddressInput.value,
+        deliveryTime: timeInput.value,
+        foodId: foodSelect.value,
+        quantity: parseInt(quantityInput.value, 10) || 0,
+        comboId: comboSelect.value,
+        comboQuantity: parseInt(comboQuantityInput.value, 10) || 0
+      };
+    }
+  };
+
+  const getCurrentData = () => ({
+    fullName: fullNameInput.value,
+    phone: phoneInput.value,
+    deliveryAddress: deliveryAddressInput.value,
+    deliveryTime: timeInput.value,
+    foodId: foodSelect.value,
+    quantity: parseInt(quantityInput.value, 10) || 0,
+    comboId: comboSelect.value,
+    comboQuantity: parseInt(comboQuantityInput.value, 10) || 0
+  });
+
+  const hasChanges = () => {
+    if (!editing || !originalData) return true; // Si no está editando, siempre permitir
+
+    const current = getCurrentData();
+    return JSON.stringify(originalData) !== JSON.stringify(current);
+  };
+
+  const updateSubmitButton = () => {
+    if (!editing) return; // Si no está editando, no hacer nada
+
+    if (isDelivered) {
+      // Si está entregado, el botón permanece deshabilitado
+      submitBtn.disabled = true;
+      submitBtn.className = "flex items-center gap-2 p-2 bg-gray-400 text-white rounded-lg cursor-not-allowed font-semibold text-base opacity-50";
+      submitBtn.title = "No se puede modificar un pedido entregado";
+      return;
+    }
+
+    const changed = hasChanges();
+    submitBtn.disabled = !changed;
+
+    if (changed) {
+      submitBtn.className = "flex items-center gap-2 p-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold text-base transition-all duration-200";
+      submitBtn.title = "Guardar cambios";
+    } else {
+      submitBtn.className = "flex items-center gap-2 p-2 bg-gray-400 text-white rounded-lg cursor-not-allowed font-semibold text-base opacity-50 transition-all duration-200";
+      submitBtn.title = "No hay cambios para guardar";
+    }
+  };
+
+  // 📝 Event listeners para detectar cambios
+  const onFieldChange = () => {
+    updatePricing();
+    updateSubmitButton();
+  };
 
   const updatePricing = () => {
     const selectedFoodOption = foodSelect.selectedOptions[0];
@@ -347,7 +416,7 @@ function openOrderForm(orderId?: string): void {
       if (combo) {
         total += comboQuantity * combo.price;
       }
-      comboQuantityInput.disabled = false;
+      comboQuantityInput.disabled = isDelivered; // Solo deshabilitar si está entregado
     } else {
       comboQuantityInput.disabled = true;
     }
@@ -362,7 +431,7 @@ function openOrderForm(orderId?: string): void {
       food.combos.forEach(combo => {
         const option = document.createElement('option');
         option.value = combo.id;
-        option.textContent = `${combo.quantity} Uds. por ${formatCurrency(combo.price)}`;
+        option.textContent = `${combo.quantity} Uds. x ${formatCurrency(combo.price)}`;
         if (editing && editing.comboId === combo.id) {
           option.selected = true;
         }
@@ -373,17 +442,17 @@ function openOrderForm(orderId?: string): void {
       comboQuantityInput.value = editing?.comboQuantity.toString() || '1';
     }
     updatePricing();
+    updateSubmitButton(); // Actualizar estado del botón después de poblar combos
   };
 
   comboSelect.addEventListener('change', () => {
-    if (comboSelect.value) {
+    if (comboSelect.value && !isDelivered) {
       comboQuantityInput.value = '1';
     } else {
       comboQuantityInput.value = '0';
     }
-    updatePricing();
+    onFieldChange();
   });
-
 
   const handlePhoneInput = (ev: Event) => {
     const input = ev.target as HTMLInputElement;
@@ -428,128 +497,152 @@ function openOrderForm(orderId?: string): void {
     return candidate;
   };
 
-  const onSubmit = (ev: Event) => {
+  const onSubmit = async (ev: Event) => {
     ev.preventDefault();
-    const data = new FormData(orderForm);
-    const fullName = normalizeName(String(data.get('fullName') || ''));
-    const phone = normalizePhone(String(data.get('phone') || ''));
-    const deliveryAddress = normalizeName(String(data.get('deliveryAddress') || ''));
-    const foodId = String(data.get('foodId') || '');
-    const quantity = parseInt(String(data.get('quantity') || '0'), 10);
-    const comboId = String(data.get('comboId') || '') || null;
-    const comboQuantity = parseInt(String(data.get('comboQuantity') || '0'), 10);
-    const timeValue = String(data.get('deliveryTime') || '');
 
-    if (!timeValue) { UI.toast('Selecciona una hora de entrega.'); return; }
+    // 🔒 Verificar que el pedido no esté entregado
+    if (editing && editing.delivered) {
+      UI.toast('❌ No se puede modificar un pedido que ya fue entregado');
+      return;
+    }
 
-    let deliveryTimeIso = '';
+    // 🔍 Verificar que haya cambios (solo para edición)
+    if (editing && !hasChanges()) {
+      UI.toast('ℹ️ No hay cambios para guardar');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    UI.showSpinner('Espere un momento...');
+
     try {
-      const today = new Date();
-      const [hours, minutes] = timeValue.split(':');
-      today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-      deliveryTimeIso = today.toISOString();
-    } catch {
-      UI.toast('Hora de entrega inválida.');
-      return;
-    }
+      const data = new FormData(orderForm);
+      const fullName = normalizeName(String(data.get('fullName') || ''));
+      const phone = normalizePhone(String(data.get('phone') || ''));
+      const deliveryAddress = normalizeName(String(data.get('deliveryAddress') || ''));
+      const foodId = String(data.get('foodId') || '');
+      const quantity = parseInt(String(data.get('quantity') || '0'), 10);
+      const comboId = String(data.get('comboId') || '') || null;
+      const comboQuantity = parseInt(String(data.get('comboQuantity') || '0'), 10);
+      const timeValue = String(data.get('deliveryTime') || '');
 
-    if (!fullName || !phone || !deliveryAddress) { UI.toast('Completa todos los campos requeridos.'); return; }
-    if (!isValidPhoneFormat(phone)) { UI.toast('El formato del teléfono es inválido.'); phoneInput.focus(); phoneInput.classList.add('border-red-500'); return; }
-    if (!foodId) { UI.toast('Selecciona una comida.'); return; }
+      if (!timeValue) { UI.toast('Selecciona una hora de entrega.'); return; }
 
-    const food = FoodRepo.findById(foodId);
-    if (!food) { UI.toast('La comida seleccionada no fue encontrada.'); return; }
-
-    let totalItemsNeeded = quantity;
-    if (comboId) {
-      const combo = food.combos.find(c => c.id === comboId);
-      if (combo) {
-        totalItemsNeeded += combo.quantity * comboQuantity;
-      }
-    }
-
-    if (food.stock < totalItemsNeeded) {
-      UI.toast(`Stock insuficiente para "${food.name}". Stock actual: ${food.stock}. Necesario: ${totalItemsNeeded}`);
-      return;
-    }
-
-    if (quantity === 0 && !comboId) {
-      UI.toast('Agrega al menos un item o un combo al pedido.');
-      return;
-    }
-
-    const canonicalPhone = toCanonicalPhone(phone);
-    if (canonicalPhone) {
-      const existingOrder = OrderRepo.getAll().find(order => {
-        if (editing && order.id === editing.id) return false;
-        return toCanonicalPhone(order.phone) === canonicalPhone;
-      });
-      if (existingOrder) {
-        UI.toast(`El teléfono ya está registrado para el cliente '${existingOrder.fullName}'.`);
-        phoneInput.focus();
-        phoneInput.classList.add('border-red-500');
+      let deliveryTimeIso = '';
+      try {
+        const today = new Date();
+        const [hours, minutes] = timeValue.split(':');
+        today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        deliveryTimeIso = today.toISOString();
+      } catch {
+        UI.toast('Hora de entrega inválida.');
         return;
       }
-    }
 
-    const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
-    const gap = meta.deliveryGapMinutes ?? 15;
+      if (!fullName || !phone || !deliveryAddress) { UI.toast('Completa todos los campos requeridos.'); return; }
+      if (!isValidPhoneFormat(phone)) { UI.toast('El formato del teléfono es inválido.'); phoneInput.focus(); phoneInput.classList.add('border-red-500'); return; }
+      if (!foodId) { UI.toast('Selecciona una comida.'); return; }
 
-    const conflict = OrderRepo.checkConflict(deliveryTimeIso, gap, editing?.id);
-    if (conflict.conflict) {
-      const requestedMs = new Date(deliveryTimeIso).getTime();
-      const adjustedMs = adjustTimeToGap(requestedMs, gap);
+      const food = FoodRepo.findById(foodId);
+      if (!food) { UI.toast('La comida seleccionada no fue encontrada.'); return; }
 
-      const adjustedDate = new Date(adjustedMs);
-      const hh = String(adjustedDate.getHours()).padStart(2, '0');
-      const mm = String(adjustedDate.getMinutes()).padStart(2, '0');
-      timeInput.value = `${hh}:${mm}`;
+      let totalItemsNeeded = quantity;
+      if (comboId) {
+        const combo = food.combos.find(c => c.id === comboId);
+        if (combo) {
+          totalItemsNeeded += combo.quantity * comboQuantity;
+        }
+      }
 
-      UI.toast(`Conflicto de entrega. Hora ajustada para cumplir ${gap} min de intervalo.`);
+      if (food.stock < totalItemsNeeded) {
+        UI.toast(`Stock insuficiente para "${food.name}". Stock actual: ${food.stock}. Necesario: ${totalItemsNeeded}`);
+        return;
+      }
 
-      return;
-    }
+      if (quantity === 0 && !comboId) {
+        UI.toast('Agrega al menos un item o un combo al pedido.');
+        return;
+      }
 
-    const payload = { fullName, phone, deliveryAddress, foodId, quantity, comboId, comboQuantity, deliveryTime: deliveryTimeIso };
+      const canonicalPhone = toCanonicalPhone(phone);
+      if (canonicalPhone) {
+        const existingOrder = OrderRepo.getAll().find(order => {
+          if (editing && order.id === editing.id) return false;
+          return toCanonicalPhone(order.phone) === canonicalPhone;
+        });
+        if (existingOrder) {
+          UI.toast(`El teléfono ya está registrado para el cliente '${existingOrder.fullName}'.`);
+          phoneInput.focus();
+          phoneInput.classList.add('border-red-500');
+          return;
+        }
+      }
 
-    let success = false;
-    if (editing) {
-      success = OrderRepo.update({ ...editing, ...payload });
+      const meta = JSON.parse(localStorage.getItem('fd_meta_v1') || '{}');
+      const gap = meta.deliveryGapMinutes ?? 15;
+
+      const conflict = OrderRepo.checkConflict(deliveryTimeIso, gap, editing?.id);
+      if (conflict.conflict) {
+        const requestedMs = new Date(deliveryTimeIso).getTime();
+        const adjustedMs = adjustTimeToGap(requestedMs, gap);
+
+        const adjustedDate = new Date(adjustedMs);
+        const hh = String(adjustedDate.getHours()).padStart(2, '0');
+        const mm = String(adjustedDate.getMinutes()).padStart(2, '0');
+        timeInput.value = `${hh}:${mm}`;
+
+        UI.toast(`Conflicto de entrega. Hora ajustada para cumplir ${gap} min de intervalo.`, 7000);
+        updateSubmitButton(); // Actualizar botón después del cambio de hora
+        return;
+      }
+
+      const payload = { fullName, phone, deliveryAddress, foodId, quantity, comboId, comboQuantity, deliveryTime: deliveryTimeIso };
+
+      let success = false;
+      if (editing) {
+        success = await OrderRepo.update({ ...editing, ...payload });
+        if (success) {
+          UI.toast('✅ Pedido actualizado correctamente.');
+          cleanup();
+          closeModalAndRestoreScroll();
+          renderCurrent();
+        }
+        return;
+      } else {
+        const newOrder = await OrderRepo.add(payload);
+        if (newOrder) {
+          success = true;
+          UI.toast('✅ Pedido agregado correctamente.');
+        }
+      }
+
       if (success) {
-        UI.toast('Pedido actualizado exitosamente.');
-        cleanup();
-        closeModalAndRestoreScroll();
         renderCurrent();
+
+        orderForm.reset();
+        quantityInput.value = '0';
+        comboQuantityInput.value = '0';
+        foodSelect.value = '';
+        comboSelect.innerHTML = '<option value="">Sin combo</option>';
+        phoneInput.value = '';
+        fullNameInput.value = '';
+        deliveryAddressInput.value = '';
+        const now = new Date();
+        const nh = String(now.getHours()).padStart(2, '0');
+        const nm = String(now.getMinutes()).padStart(2, '0');
+        timeInput.value = `${nh}:${nm}`;
+
+        updatePricing();
+        updatePhoneValidation();
+        updateSubmitButton();
+
+        fullNameInput.focus();
       }
-      return;
-    } else {
-      const newOrder = OrderRepo.add(payload);
-      if (newOrder) {
-        success = true;
-        UI.toast('Pedido agregado exitosamente.');
+    } finally {
+      if (!editing || !isDelivered) {
+        submitBtn.disabled = false;
       }
-    }
-
-    if (success) {
-      renderCurrent();
-
-      orderForm.reset();
-      quantityInput.value = '0';
-      comboQuantityInput.value = '0';
-      foodSelect.value = '';
-      comboSelect.innerHTML = '<option value="">Sin combo</option>';
-      phoneInput.value = '';
-      fullNameInput.value = '';
-      deliveryAddressInput.value = '';
-      const now = new Date();
-      const nh = String(now.getHours()).padStart(2, '0');
-      const nm = String(now.getMinutes()).padStart(2, '0');
-      timeInput.value = `${nh}:${nm}`;
-
-      updatePricing();
-      updatePhoneValidation();
-
-      fullNameInput.focus();
+      UI.hideSpinner();
     }
   };
 
@@ -563,10 +656,18 @@ function openOrderForm(orderId?: string): void {
     comboSelect.removeEventListener('change', onComboChange);
     quantityInput.removeEventListener('input', onQuantityInput);
     comboQuantityInput.removeEventListener('input', onComboQuantityInput);
+    fullNameInput.removeEventListener('input', onFormFieldChange);
+    deliveryAddressInput.removeEventListener('input', onFormFieldChange);
+    timeInput.removeEventListener('change', onFormFieldChange);
   };
 
   const onCancel = () => { cleanup(); closeModalAndRestoreScroll(); };
-  const onPhoneInput = (ev: Event) => { handlePhoneInput(ev); updatePhoneValidation(); debouncedPrefixCheck(); };
+  const onPhoneInput = (ev: Event) => {
+    handlePhoneInput(ev);
+    updatePhoneValidation();
+    debouncedPrefixCheck();
+    updateSubmitButton();
+  };
   const onPhoneBlur = () => {
     const value = phoneInput.value;
     if (value.length > 0 && !isValidPhoneFormat(value)) {
@@ -580,16 +681,21 @@ function openOrderForm(orderId?: string): void {
       phoneInput.classList.add('border-gray-300');
     }
   };
-  const onFoodChange = () => populateCombos(foodSelect.value);
-  const onComboChange = () => updatePricing();
-  const onQuantityInput = () => updatePricing();
+  const onFoodChange = () => {
+    populateCombos(foodSelect.value);
+    onFieldChange();
+  };
+  const onComboChange = () => onFieldChange();
+  const onQuantityInput = () => onFieldChange();
   const onComboQuantityInput = () => {
     if (parseInt(comboQuantityInput.value, 10) === 0) {
       UI.toast('La cantidad de combos debe ser mayor a 0.');
     }
-    updatePricing();
+    onFieldChange();
   };
+  const onFormFieldChange = () => updateSubmitButton();
 
+  // 🔗 Event Listeners
   orderForm.addEventListener('submit', onSubmit);
   cancelBtn.addEventListener('click', onCancel);
   phoneInput.addEventListener('input', onPhoneInput);
@@ -600,11 +706,24 @@ function openOrderForm(orderId?: string): void {
   quantityInput.addEventListener('input', onQuantityInput);
   comboQuantityInput.addEventListener('input', onComboQuantityInput);
 
+  // Event listeners adicionales para detectar cambios en campos de texto
+  fullNameInput.addEventListener('input', onFormFieldChange);
+  deliveryAddressInput.addEventListener('input', onFormFieldChange);
+  timeInput.addEventListener('change', onFormFieldChange);
+
+  // 🚀 Inicialización
   if (editing) {
     populateCombos(editing.foodId);
+    // Capturar datos originales después de poblar el formulario
+    setTimeout(() => {
+      captureOriginalData();
+      updateSubmitButton();
+    }, 100);
   }
+
   updatePricing();
   updatePhoneValidation();
+  updateSubmitButton();
 }
 
 /* -------------------- Helpers / Formulario Comida -------------------- */
@@ -612,15 +731,11 @@ function openOrderForm(orderId?: string): void {
 /**
  * Abre modal para crear/editar comida.
  */
-let isFoodModalOpen = false
-
 function openFoodForm(foodId?: string): void {
   // Prevenir apertura de modal si ya hay uno abierto
-  if (isFoodModalOpen) {
+  if (document.getElementById('foodForm')) {
     return;
   }
-
-  isFoodModalOpen = true;
 
   const editing = foodId ? FoodRepo.findById(foodId) : null;
   let tempCombos = editing ? [...editing.combos] : [];
@@ -750,12 +865,10 @@ function openFoodForm(foodId?: string): void {
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  // MODIFICACIÓN PRINCIPAL: Resetear la variable cuando se cierre el modal
   const closeModalAndRestoreScroll = () => {
     close();
     document.documentElement.style.overflow = '';
     window.removeEventListener('resize', setVH);
-    isFoodModalOpen = false; // ← ESTA ES LA LÍNEA CLAVE
   };
 
   // --- ELEMENTOS DEL DOM DENTRO DEL MODAL ---
@@ -820,16 +933,16 @@ function openFoodForm(foodId?: string): void {
     const currentPrice = parseMonetary(priceInputEl.value);
     const minProfit = 0.50;
     const minPrice = Number((cost + minProfit).toFixed(2));
-    
+
     const currentProfit = Number((currentPrice - cost).toFixed(2));
-    
+
     if (currentProfit < minProfit) {
       const oldPrice = formatCurrency(currentPrice);
       const newPrice = formatCurrency(minPrice);
       const actualProfit = formatCurrency(minProfit);
-      
+
       priceInputEl.value = minPrice.toString();
-      
+
       if (currentProfit < 0) {
         UI.toast(`Precio ajustado: ${oldPrice} → ${newPrice}. Había pérdida de ${formatCurrency(Math.abs(currentProfit))}.`, 10000);
       } else {
@@ -847,22 +960,22 @@ function openFoodForm(foodId?: string): void {
     const cost = parseMonetary(costInputEl.value);
     const quantity = parseInt(comboQuantityInput.value, 10);
     const currentComboPrice = parseMonetary(comboPriceInput.value);
-    
+
     if (isNaN(quantity) || quantity < 2 || isNaN(currentComboPrice)) return false;
-    
+
     const totalCost = Number((cost * quantity).toFixed(2));
     const minRequiredProfit = getMinComboProfit(quantity);
     const minComboPrice = Number((totalCost + minRequiredProfit).toFixed(2));
-    
+
     const currentProfit = Number((currentComboPrice - totalCost).toFixed(2));
-    
+
     if (currentProfit < minRequiredProfit) {
       const oldPrice = formatCurrency(currentComboPrice);
       const newPrice = formatCurrency(minComboPrice);
       const actualProfit = formatCurrency(minRequiredProfit);
-      
+
       comboPriceInput.value = minComboPrice.toString();
-      
+
       if (currentProfit < 0) {
         UI.toast(`Combo ajustado: ${oldPrice} → ${newPrice}. ${quantity}u tenía pérdida de ${formatCurrency(Math.abs(currentProfit))}.`, 10000);
       } else {
@@ -920,66 +1033,75 @@ function openFoodForm(foodId?: string): void {
   });
 
   // --- VALIDACIÓN AL ENVIAR FORMULARIO (con ajuste automático) ---
-  const onSubmit = (ev: Event) => {
+  const onSubmit = async (ev: Event) => {
     ev.preventDefault();
-    const data = new FormData(foodForm);
+    const submitBtn = element.querySelector('#submitFood') as HTMLButtonElement;
+    submitBtn.disabled = true;
+    UI.showSpinner('Espere un momento...');
 
-    const name = normalizeName(String(data.get('name') || ''));
-    // parseo robusto de costo y precio (comas / ceros iniciales)
-    const cost = parseMonetary(data.get('cost'));
-    const price = parseMonetary(data.get('price'));
+    try {
+      const data = new FormData(foodForm);
 
-    const stock = Math.max(0, Number(data.get('stock')) || 0);
-    const startTime = String(data.get('startTime') || '');
-    const endTime = String(data.get('endTime') || '');
+      const name = normalizeName(String(data.get('name') || ''));
+      // parseo robusto de costo y precio (comas / ceros iniciales)
+      const cost = parseMonetary(data.get('cost'));
+      const price = parseMonetary(data.get('price'));
 
-    if (!name) { UI.toast('Nombre requerido'); return; }
-    if (isNaN(cost) || cost <= 0) { UI.toast('Costo debe ser mayor a cero.'); return; }
-    if (isNaN(price) || price <= 0) { UI.toast('Precio debe ser mayor a cero.'); return; }
-    if (FoodRepo.nameExists(name, editing?.id)) { UI.toast('El nombre ya existe'); return; }
-    if (!startTime || !endTime) { UI.toast('Debe especificar un horario de venta.'); return; }
+      const stock = Math.max(0, Number(data.get('stock')) || 0);
+      const startTime = String(data.get('startTime') || '');
+      const endTime = String(data.get('endTime') || '');
 
-    // Verificar si necesita ajuste automático del precio unitario
-    if (autoAdjustUnitPrice()) {
-      return; // El precio fue ajustado, el usuario debe hacer clic nuevamente
-    }
+      if (!name) { UI.toast('Nombre requerido'); return; }
+      if (isNaN(cost) || cost <= 0) { UI.toast('Costo debe ser mayor a cero.'); return; }
+      if (isNaN(price) || price <= 0) { UI.toast('Precio debe ser mayor a cero.'); return; }
+      if (FoodRepo.nameExists(name, editing?.id)) { UI.toast('El nombre ya existe'); return; }
+      if (!startTime || !endTime) { UI.toast('Debe especificar un horario de venta.'); return; }
 
-    // Si el toggle de combos está activo, validar todos los combos antes de guardar
-    const combosToSave = comboToggle.checked ? tempCombos : [];
-    if (comboToggle.checked && combosToSave.length > 0) {
-      const comboErrors: string[] = [];
-      combosToSave.forEach((c) => {
-        const totalCost = Number((cost * c.quantity).toFixed(4));
-        const totalProfit = Number((c.price - totalCost).toFixed(4));
-        const minRequiredProfit = getMinComboProfit(c.quantity);
-        
-        if (totalProfit < 0) {
-          comboErrors.push(`${c.quantity}u @ ${formatCurrency(c.price)} → pérdida ${formatCurrency(Math.abs(totalProfit))} (precio < costo total)`);
-        } else if (totalProfit < minRequiredProfit) {
-          comboErrors.push(`${c.quantity}u @ ${formatCurrency(c.price)} → ganancia total ${formatCurrency(totalProfit)} (mínimo ${formatCurrency(minRequiredProfit)} requerido)`);
-        }
-      });
-      if (comboErrors.length) {
-        UI.toast(`Revisa los combos y vuelve a intentar.`);
-        return;
+      // Verificar si necesita ajuste automático del precio unitario
+      if (autoAdjustUnitPrice()) {
+        return; // El precio fue ajustado, el usuario debe hacer clic nuevamente
       }
-    }
 
-    // Si pasa validaciones, continúa con la lógica de guardado existente
-    const combos = comboToggle.checked ? tempCombos : [];
-    if (editing) {
-      const isActive = !!data.get('isActive');
-      if (isLinkedToOrder && !isActive) { UI.toast('Actualización bloqueada: pedido activo'); return; }
-      const updated = { ...editing, name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, isActive, combos };
-      FoodRepo.update(updated, { startTime, endTime });
-      UI.toast('Comida actualizada');
-    } else {
-      FoodRepo.add({ name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, combos }, { startTime, endTime });
-      UI.toast('Comida agregada');
-    }
+      // Si el toggle de combos está activo, validar todos los combos antes de guardar
+      const combosToSave = comboToggle.checked ? tempCombos : [];
+      if (comboToggle.checked && combosToSave.length > 0) {
+        const comboErrors: string[] = [];
+        combosToSave.forEach((c) => {
+          const totalCost = Number((cost * c.quantity).toFixed(4));
+          const totalProfit = Number((c.price - totalCost).toFixed(4));
+          const minRequiredProfit = getMinComboProfit(c.quantity);
 
-    closeModalAndRestoreScroll();
-    renderCurrent();
+          if (totalProfit < 0) {
+            comboErrors.push(`${c.quantity}u @ ${formatCurrency(c.price)} → pérdida ${formatCurrency(Math.abs(totalProfit))} (precio < costo total)`);
+          } else if (totalProfit < minRequiredProfit) {
+            comboErrors.push(`${c.quantity}u @ ${formatCurrency(c.price)} → ganancia total ${formatCurrency(totalProfit)} (mínimo ${formatCurrency(minRequiredProfit)} requerido)`);
+          }
+        });
+        if (comboErrors.length) {
+          UI.toast(`Revisa los combos y vuelve a intentar.`);
+          return;
+        }
+      }
+
+      // Si pasa validaciones, continúa con la lógica de guardado existente
+      const combos = comboToggle.checked ? tempCombos : [];
+      if (editing) {
+        const isActive = !!data.get('isActive');
+        if (isLinkedToOrder && !isActive) { UI.toast('Actualización bloqueada: pedido activo'); return; }
+        const updated = { ...editing, name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, isActive, combos };
+        await FoodRepo.update(updated, { startTime, endTime });
+        UI.toast('Comida actualizada');
+      } else {
+        await FoodRepo.add({ name, cost: +cost.toFixed(2), price: +price.toFixed(2), stock, combos }, { startTime, endTime });
+        UI.toast('Comida agregada');
+      }
+
+      closeModalAndRestoreScroll();
+      renderCurrent();
+    } finally {
+      submitBtn.disabled = false;
+      UI.hideSpinner();
+    }
   };
 
   // Agregar listeners para validación en tiempo real
@@ -1000,12 +1122,12 @@ function openFoodForm(foodId?: string): void {
     const cost = parseMonetary(costInputEl.value);
     const quantity = parseInt(comboQuantityInput.value, 10);
     const comboPrice = parseMonetary(comboPriceInput.value);
-    
+
     if (cost > 0 && quantity >= 2 && comboPrice > 0) {
       const totalCost = Number((cost * quantity).toFixed(2));
       const totalProfit = Number((comboPrice - totalCost).toFixed(2));
       const minRequiredProfit = getMinComboProfit(quantity);
-      
+
       if (totalProfit < minRequiredProfit) {
         // Solo mostrar advertencia, no ajustar automáticamente hasta intentar agregar
         const minPrice = Number((totalCost + minRequiredProfit).toFixed(2));
@@ -1034,8 +1156,6 @@ function openFoodForm(foodId?: string): void {
 
   renderComboList();
 }
-
-
 
 /** Muestra modal con historial de ventas y detalles. */
 function openSalesHistoryModal(foodId: string): void {
