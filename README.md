@@ -208,7 +208,7 @@ Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más det
 
 ## 👨‍💻 Autor
 
-**JavicSoftCode**
-- GitHub: [@JavicSoftCode](https://github.com/JavicSoftCode)
+**JavicSoftCode-01**
+- GitHub: [@JavicSoftCode](https://github.com/JavicSoftCode-01)
 
 ---
