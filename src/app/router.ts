@@ -1,6 +1,7 @@
 // Enrutador mínimo para manejar la pantalla actual y suscriptores
+import { ScreenType } from './config';
 
-export type Screen = 'dashboard' | 'clients' | 'foods' | 'settings';
+export type Screen = ScreenType;
 
 type Listener = (screen: Screen) => void;
 

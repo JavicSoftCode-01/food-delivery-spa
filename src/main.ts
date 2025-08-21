@@ -23,9 +23,11 @@ function renderCurrent(): void {
 	else if (current === 'settings') renderSettings(container);
 }
 
+import { CONFIG } from './app/config';
+
 /** Inicializa el tema oscuro si está guardado en localStorage. */
 function initializeTheme(): void {
-	const metaRaw = localStorage.getItem('fd_meta_v1') || '{}';
+	const metaRaw = localStorage.getItem(CONFIG.STORAGE_KEYS.SETTINGS) || '{}';
 	let meta: { darkMode?: boolean } = {};
 	try { meta = JSON.parse(metaRaw) || {}; } catch { meta = {}; }
 	if (meta.darkMode) {

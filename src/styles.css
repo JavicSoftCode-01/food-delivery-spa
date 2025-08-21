@@ -1,5 +1,8 @@
 /* Responsable: estilos globales y pequeñas correcciones visuales para la app. */
 
+/* Importar variables de tema */
+@import './ui/theme/variables.css';
+
 /* Variables */
 :root {
   --radius: 12px;

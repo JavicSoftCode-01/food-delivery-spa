@@ -127,22 +127,6 @@ export const getLastNineDigits = (phone?: string): string => {
   return digitsOnly;
 };
 
-/** Formatea teléfono a enlace de WhatsApp. */
-export function formatPhoneForWhatsApp(phone: string): string {
-  const cleanPhone = phone.replace(/\D/g, '');
-  if (cleanPhone.startsWith('0')) {
-    const withoutZero = cleanPhone.substring(1);
-    if (withoutZero.length === 9) {
-      return `+593${withoutZero.substring(0, 2)}${withoutZero.substring(2, 5)}${withoutZero.substring(5)}`;
-    }
-  }
-  if (cleanPhone.startsWith('593')) {
-    const number = cleanPhone.substring(3);
-    if (number.length === 9) {
-      return `+593${number.substring(0, 2)}${number.substring(2, 5)}${number.substring(5)}`;
-    }
-  }
-  return phone;
-}
+// Nota: formatPhoneForWhatsApp se movió a utils/formatters.ts para evitar duplicación
 
 
