@@ -93,10 +93,10 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
             <!-- Entrega -->
             <div>
               <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold text-sm">
-                <i class="fa fa-clock w-4 text-center"></i>Entrega:
+                <i class="fa ${order.delivered ? 'fa-check-circle text-green-500' : 'fa-clock'} w-4 text-center"></i>${order.delivered ? 'Entregado a las:' : 'Entrega:'}
               </label>
               <div class="text-gray-900 dark:text-dark-text font-medium pl-6 text-sm">
-                ${formatTime(order.deliveryTime)}
+                ${formatTime(order.delivered && order.deliveredAt ? order.deliveredAt : order.deliveryTime)}
               </div>
             </div>
 
@@ -241,18 +241,10 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
     </div>
   </div>`;
 
-  // --- Lógica para mostrar el modal y bloquear scroll del fondo ---
-  document.documentElement.style.overflow = 'hidden';
-
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  const closeModalAndRestoreScroll = () => {
-    close();
-    document.documentElement.style.overflow = '';
-  };
-
   // --- Event Listeners ---
-  element.querySelector('#closeDetails')!.addEventListener('click', closeModalAndRestoreScroll);
+  element.querySelector('#closeDetails')!.addEventListener('click', close);
 
   element.querySelector('#callFromDetails')!.addEventListener('click', (e) => {
     const phone = (e.currentTarget as HTMLElement).dataset.phone!;
@@ -262,14 +254,39 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
   const toggle = element.querySelector('#detailsToggle') as HTMLInputElement;
 
   const updateToggleVisuals = (isDelivered: boolean) => {
+    const freshOrder = OrderRepo.findById(orderId);
+    if (!freshOrder) return;
+
     const toggleBg = element.querySelector('#toggleBg')!;
     const toggleDot = element.querySelector('#toggleDot')!;
-    const statusText = element.querySelector('.text-sm.font-medium')!;
+    // Selector robusto para el texto de estado, basado en su relación con el toggle
+    const statusText = (element.querySelector('#detailsToggle') as HTMLInputElement).parentElement?.previousElementSibling as HTMLElement;
 
-    toggleBg.className = `w-10 h-5 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative transition-colors`;
-    toggleDot.className = `absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
-    statusText.textContent = isDelivered ? 'Entregado' : 'Pendiente';
-    statusText.className = `text-sm font-medium ${isDelivered ? 'text-green-600' : 'text-red-600'}`;
+    // Actualizar el texto de estado (Pendiente/Entregado) y el color
+    if (statusText) {
+      statusText.textContent = isDelivered ? 'Entregado' : 'Pendiente';
+      statusText.className = `text-sm font-medium ${isDelivered ? 'text-green-600' : 'text-red-600'}`;
+    }
+
+    // Actualizar el estilo visual del toggle
+    if (toggleBg && toggleDot) {
+        toggleBg.className = `w-10 h-5 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative transition-colors`;
+        toggleDot.className = `absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
+    }
+
+    // Actualizar dinámicamente la sección de información de entrega
+    const deliveryLabel = element.querySelector('.fa-clock, .fa-check-circle')?.parentElement as HTMLElement;
+    if (deliveryLabel) {
+      const deliveryTimeValueDiv = deliveryLabel.nextElementSibling as HTMLElement;
+
+      // Cambiar el icono y el texto de la etiqueta
+      deliveryLabel.innerHTML = `<i class="fa ${isDelivered ? 'fa-check-circle text-green-500' : 'fa-clock'} w-4 text-center"></i>${isDelivered ? 'Entregado a las:' : 'Entrega:'}`;
+      
+      // Cambiar el valor de la hora
+      if (deliveryTimeValueDiv) {
+        deliveryTimeValueDiv.textContent = formatTime(isDelivered && freshOrder.deliveredAt ? freshOrder.deliveredAt : freshOrder.deliveryTime);
+      }
+    }
   };
 
   toggle.addEventListener('change', () => {
@@ -287,15 +304,18 @@ function showOrderDetails(orderId: string, onUpdate: () => void) {
 
 /** Renders the dashboard screen. */
 export function renderDashboard(container: HTMLElement): void {
-  const foods = FoodRepo.getAll();
-  const orders = OrderRepo.getSorted().filter((o) => o.state);
-  const pending = orders.filter((o) => !o.delivered).length;
-  const delivered = orders.filter((o) => o.delivered).length;
-  const revenue = FoodRepo.totalProfit();
+  setTimeout(() => window.scrollTo(0, 0), 0);
 
-  container.innerHTML = `<section class="space-y-4">
+  const _render = (animate: boolean) => {
+    const foods = FoodRepo.getAll();
+    const orders = OrderRepo.getSorted().filter((o) => o.state);
+    const pending = orders.filter((o) => !o.delivered).length;
+    const delivered = orders.filter((o) => o.delivered).length;
+    const revenue = FoodRepo.totalProfit();
+
+    container.innerHTML = `<section class="space-y-4">
     <div class="grid grid-cols-2 gap-3">
-      <div class="dashboard-card p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
+      <div class="dashboard-card cursor-pointer p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
         <div class="flex items-center gap-2 mb-1">
           <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
             <i class="fa fa-clock text-white fa-lg"></i>
@@ -305,7 +325,7 @@ export function renderDashboard(container: HTMLElement): void {
         <div class="text-2xl text-center font-bold text-gray-900 dark:text-white">${pending}</div>
       </div>
       
-      <div class="dashboard-card p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
+      <div class="dashboard-card cursor-pointer p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
         <div class="flex items-center gap-2 mb-1">
           <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
             <i class="fa fa-check text-white fa-lg"></i>
@@ -315,7 +335,7 @@ export function renderDashboard(container: HTMLElement): void {
         <div class="text-2xl text-center font-bold text-gray-900 dark:text-white">${delivered}</div>
       </div>
       
-      <div class="dashboard-card p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
+      <div class="dashboard-card cursor-pointer p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
         <div class="flex items-center gap-2 mb-1">
           <div class="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
             <i class="fa fa-utensils text-white fa-lg"></i>
@@ -325,7 +345,7 @@ export function renderDashboard(container: HTMLElement): void {
         <div class="text-2xl text-center font-bold text-gray-900 dark:text-white">${foods.length}</div>
       </div>
       
-      <div class="dashboard-card p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
+      <div class="dashboard-card cursor-pointer p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
         <div class="flex items-center gap-2 mb-1">
           <div class="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
             <i class="fa fa-dollar-sign text-white fa-lg"></i>
@@ -343,46 +363,60 @@ export function renderDashboard(container: HTMLElement): void {
           <span class="text-base font-semibold">Nuevo pedido</span>
         </div>
       </button>
-      <button id="btnAddFoodQuick" class="flex-1 px-2 py-2 border border-gray-300 dark:border-dark-border hover:border-blue-400 text-gray-700 dark:text-gray-300 hover:text-blue-600 rounded-lg font-medium transition-all duration-200">
+      <button id="btnAddFoodQuick" 
+        class="flex-1 px-2 py-2 border-2 border-accent hover:border-accent text-gray-700 dark:text-gray-300 hover:text-accent rounded-lg font-medium transition-all duration-200">
         <div class="flex items-center justify-center gap-2">
           <i class="fa fa-utensils fa-lg"></i>
           <span class="text-base font-semibold">Nueva comida</span>
         </div>
       </button>
+
     </div>
   </section>`;
 
-  // Add staggered animation entrance effect
-  const cards = container.querySelectorAll('.dashboard-card');
-  cards.forEach((card, index) => {
-    const element = card as HTMLElement;
-    element.style.opacity = '0';
-    element.style.transform = 'translateY(20px)';
+    if (animate) {
+      // Add staggered animation entrance effect
+      const cards = container.querySelectorAll('.dashboard-card');
+      cards.forEach((card, index) => {
+        const element = card as HTMLElement;
+        element.style.opacity = '0';
+        element.style.transform = 'translateY(20px)';
 
-    setTimeout(() => {
-      element.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-      element.style.opacity = '1';
-      element.style.transform = 'translateY(0)';
-    }, index * 100);
-  });
+        setTimeout(() => {
+          element.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+          element.style.opacity = '1';
+          element.style.transform = 'translateY(0)';
+        }, index * 100);
+      });
+    }
 
-  // Event listeners with haptic feedback simulation
-  container.querySelector('#btnAddOrderQuick')?.addEventListener('click', (e) => {
-    const button = e.currentTarget as HTMLElement;
-    button.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      button.style.transform = '';
-      document.dispatchEvent(new CustomEvent('openOrderForm'));
-    }, 100);
-  });
+    // Event listeners with haptic feedback simulation
+    container.querySelector('#btnAddOrderQuick')?.addEventListener('click', (e) => {
+      const button = e.currentTarget as HTMLElement;
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        button.style.transform = '';
+        document.dispatchEvent(new CustomEvent('openOrderForm'));
+      }, 100);
+    });
 
-  container.querySelector('#btnAddFoodQuick')?.addEventListener('click', (e) => {
-    const button = e.currentTarget as HTMLElement;
-    button.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      button.style.transform = '';
-      document.dispatchEvent(new CustomEvent('openFoodForm'));
-    }, 100);
+    container.querySelector('#btnAddFoodQuick')?.addEventListener('click', (e) => {
+      const button = e.currentTarget as HTMLElement;
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        button.style.transform = '';
+        document.dispatchEvent(new CustomEvent('openFoodForm'));
+      }, 100);
+    });
+  }
+
+  _render(true); // Initial render with animation
+
+  // On refresh, render without animation, only if the dashboard is the current view.
+  document.addEventListener('refreshViews', () => {
+    if (container.querySelector('.dashboard-card')) {
+      _render(false);
+    }
   });
 
   UI.updateHeaderContent;
@@ -537,25 +571,16 @@ function showSalesRecordDetails(record: FoodSaleRecord, food: Food, onBackToHist
       </div>
     </div>`;
 
-  // --- 4. Lógica para mostrar el modal y BLOQUEAR el scroll del fondo ---
-
-  // Bloquea el scroll de la página principal
-  document.documentElement.style.overflow = 'hidden';
-
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  const closeModalAndRestoreScroll = () => {
-    close();
-    // Restaura el scroll de la página principal
-    document.documentElement.style.overflow = '';
-  };
-
-  element.querySelector('#closeRecordDetails')!.addEventListener('click', closeModalAndRestoreScroll);
+  element.querySelector('#closeRecordDetails')!.addEventListener('click', close);
   element.querySelector('#backToHistoryList')!.addEventListener('click', () => {
-    closeModalAndRestoreScroll();
+    close();
     onBackToHistory();
   });
 }
+
+
 
 /** Opens a modal showing sales history for a food. */
 function openSalesHistoryModal(foodId: string) {
@@ -649,17 +674,17 @@ function openSalesHistoryModal(foodId: string) {
 
 /** Renders the foods screen. */
 export function renderFoods(container: HTMLElement): void {
-  container.innerHTML = `<div class="food-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-20 opacity-0 transform translate-y-4">
+  setTimeout(() => window.scrollTo(0, 0), 0);
+  container.innerHTML = `<div class="food-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-32 opacity-0 transform translate-y-4">
     <div class="flex gap-2 items-center">
-      <input id="inputFilterFood" placeholder="Buscar por comida..." class="flex-1 px-3 py-2 border dark:border-dark-border rounded-lg bg-transparent transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-      <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg hover:bg-green-600 transition-all duration-200 hover:scale-105 active:scale-95">
+      <input id="inputFilterFood" placeholder="Buscar por comida..." class="flex-1 px-3 py-2 border dark:border-dark-border rounded-lg bg-transparent transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-1 focus:ring-blue-500" />
+      <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all duration-200 hover:scale-105 active:scale-95">
         <i class="fa-solid fa-plus fa-lg"></i>
       </button>
     </div>
     <div id="foodsList" class="space-y-3"></div>
   </div>`;
 
-  // Animación de entrada del contenedor
   const mainContainer = container.querySelector('.food-container') as HTMLElement;
   requestAnimationFrame(() => {
     mainContainer.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -670,16 +695,7 @@ export function renderFoods(container: HTMLElement): void {
   const filterInp = container.querySelector('#inputFilterFood') as HTMLInputElement;
   const foodsListContainer = container.querySelector('#foodsList')!;
 
-  function refreshFoodListView() {
-    const allFoods = FoodRepo.getAll();
-    const filterText = normalizeName(filterInp.value).toLowerCase();
-    const filteredFoods = filterText
-      ? allFoods.filter((food) => normalizeName(food.name).toLowerCase().includes(filterText))
-      : allFoods;
-    renderFoodList(filteredFoods);
-  }
-
-  const renderFoodList = (list: Food[]) => {
+  const renderFoodList = (list: Food[], animate = false) => {
     foodsListContainer.innerHTML = '';
     if (list.length === 0) {
       const emptyState = document.createElement('div');
@@ -689,7 +705,6 @@ export function renderFoods(container: HTMLElement): void {
         <p>Sin resultados.</p>`;
       foodsListContainer.appendChild(emptyState);
 
-      // Animación del estado vacío
       requestAnimationFrame(() => {
         emptyState.style.transition = 'all 0.4s ease-out';
         emptyState.style.opacity = '1';
@@ -700,7 +715,10 @@ export function renderFoods(container: HTMLElement): void {
 
     list.forEach((f, index) => {
       const row = document.createElement('div');
-      row.className = `food-item p-3 bg-gray-50 dark:bg-dark-bg rounded-lg border dark:border-dark-border hover:shadow-md transition-all duration-300 hover:scale-[1.02] opacity-0 transform translate-y-4 ${!f.isActive ? 'opacity-60' : ''}`;
+      row.className = `food-item p-3 bg-gray-50 dark:bg-dark-bg rounded-lg border dark:border-dark-border hover:shadow-md transition-all duration-300 hover:scale-[1.02] cursor-pointer ${!f.isActive ? 'opacity-60' : ''}`;
+      if (animate) {
+        row.classList.add('opacity-0', 'transform', 'translate-y-4');
+      }
       row.innerHTML = `
         <div class="flex items-center justify-between mb-2">
           <div class="font-semibold text-xl text-gray-900 dark:text-white">${f.name}</div>
@@ -720,7 +738,7 @@ export function renderFoods(container: HTMLElement): void {
             <i class="fa-solid fa-boxes-stacked text-orange-500 text-2xl"></i>
             <span class="font-semibold">
               <strong>${f.stock - OrderRepo.getReservedStockForFood(f.id)}</strong>
-              <span class="text-xs text-gray-500">(${f.stock})</span>
+              <!--<span class="text-xs text-gray-500">(${f.stock})</span> -->
             </span>
           </div>
           <div class="flex items-center gap-1 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 transition-colors hover:bg-green-100 dark:hover:bg-green-900/30">
@@ -740,20 +758,19 @@ export function renderFoods(container: HTMLElement): void {
         </div>`;
       foodsListContainer.appendChild(row);
 
-      // Animación escalonada para cada item
-      setTimeout(() => {
-        row.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-        row.style.opacity = f.isActive ? '1' : '0.6';
-        row.style.transform = 'translateY(0)';
-      }, index * 100);
+      if (animate) {
+        setTimeout(() => {
+          row.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          row.style.opacity = f.isActive ? '1' : '0.6';
+          row.style.transform = 'translateY(0)';
+        }, index * 100);
+      }
     });
 
-    // Event listeners después de que se rendericen todos los items
     setTimeout(() => {
       foodsListContainer.querySelectorAll<HTMLElement>('.editFood').forEach((b) => {
         b.addEventListener('click', (e) => {
           const button = e.currentTarget as HTMLElement;
-          // Feedback visual en el botón
           button.style.transform = 'scale(0.95)';
           setTimeout(() => {
             button.style.transform = '';
@@ -770,7 +787,6 @@ export function renderFoods(container: HTMLElement): void {
         b.addEventListener('click', (e) => {
           const button = e.currentTarget as HTMLElement;
           const foodId = button.dataset.id!;
-          // Feedback visual en el botón
           button.style.transform = 'scale(0.95)';
           setTimeout(() => {
             button.style.transform = '';
@@ -780,8 +796,23 @@ export function renderFoods(container: HTMLElement): void {
       });
     }, list.length * 100 + 100);
   };
+  
+  const refreshFoodListView = (animate = false) => {
+    const allFoods = FoodRepo.getAll();
+    allFoods.sort((a, b) => {
+      if (a.isActive && !b.isActive) return -1;
+      if (!a.isActive && b.isActive) return 1;
+      return a.name.localeCompare(b.name);
+    });
 
-  filterInp.addEventListener('input', refreshFoodListView);
+    const filterText = normalizeName(filterInp.value).toLowerCase();
+    const filteredFoods = filterText
+      ? allFoods.filter((food) => normalizeName(food.name).toLowerCase().includes(filterText))
+      : allFoods;
+    renderFoodList(filteredFoods, animate);
+  }
+
+  filterInp.addEventListener('input', () => refreshFoodListView(false));
 
   container.querySelector('#btnAddFood')?.addEventListener('click', (e) => {
     const button = e.currentTarget as HTMLElement;
@@ -792,9 +823,10 @@ export function renderFoods(container: HTMLElement): void {
     }, 100);
   });
 
-  document.addEventListener('refreshViews', refreshFoodListView);
-  refreshFoodListView();
+  document.addEventListener('refreshViews', () => refreshFoodListView(false));
+  refreshFoodListView(true);
 }
+
 
 /** Renders the settings screen. */
 export function renderSettings(container: HTMLElement): void {
@@ -1091,20 +1123,19 @@ export function handleDeliveryToggle(
 }
 
 
-/** Renders the clients. */
 export function renderClients(container: HTMLElement): void {
+  setTimeout(() => window.scrollTo(0, 0), 0);
   container.innerHTML = `
-    <div class="clients-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-20 opacity-0 transform translate-y-4">
+    <div class="clients-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-32 opacity-0 transform translate-y-4">
       <div class="flex gap-2 items-center">
         <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border dark:border-dark-border rounded-lg bg-transparent transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" inputmode="text" />
-        <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg hover:bg-green-600 transition-all duration-200 hover:scale-105 active:scale-95">
+        <button id="btnAddOrder" class="px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all duration-200 hover:scale-105 active:scale-95">
           <i class="fa-solid fa-plus fa-lg"></i>
         </button>
       </div>
       <div id="ordersList" class="space-y-3"></div>
     </div>`;
 
-  // Animación de entrada del contenedor
   const mainContainer = container.querySelector('.clients-container') as HTMLElement;
   requestAnimationFrame(() => {
     mainContainer.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -1115,33 +1146,7 @@ export function renderClients(container: HTMLElement): void {
   const filterInp = container.querySelector('#inputFilterPhone') as HTMLInputElement;
   const ordersListContainer = container.querySelector('#ordersList')!;
 
-  function refreshListView() {
-    const list = OrderRepo.getSorted();
-    const filterText = filterInp.value.toLowerCase().trim();
-
-    if (!filterText) {
-      renderList(list);
-      return;
-    }
-
-    const searchablePhoneTerm = getSearchablePhone(filterText);
-
-    const filtered = list.filter(order => {
-      const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
-
-      let phoneMatch = false;
-      if (searchablePhoneTerm.length > 0) {
-        const orderPhoneAsSearchable = getSearchablePhone(order.phone);
-        phoneMatch = orderPhoneAsSearchable.includes(searchablePhoneTerm);
-      }
-
-      return nameMatch || phoneMatch;
-    });
-
-    renderList(filtered);
-  }
-
-  const renderList = (list: Order[]) => {
+  const renderList = (list: Order[], animate = false) => {
     ordersListContainer.innerHTML = '';
     if (!list.length) {
       const emptyState = document.createElement('div');
@@ -1151,7 +1156,6 @@ export function renderClients(container: HTMLElement): void {
         <p>Sin resultados.</p>`;
       ordersListContainer.appendChild(emptyState);
 
-      // Animación del estado vacío
       requestAnimationFrame(() => {
         emptyState.style.transition = 'all 0.4s ease-out';
         emptyState.style.opacity = '1';
@@ -1162,7 +1166,10 @@ export function renderClients(container: HTMLElement): void {
 
     list.forEach((o, index) => {
       const wrapper = document.createElement('div');
-      wrapper.className = `order-item p-3 bg-gray-50 dark:bg-dark-bg rounded-lg border dark:border-dark-border hover:shadow-md transition-all duration-300 hover:scale-[1.02] opacity-0 transform translate-y-4 ${o.delivered ? 'opacity-60' : ''}`;
+      wrapper.className = `order-item p-3 bg-gray-50 dark:bg-dark-bg rounded-lg border dark:border-dark-border hover:shadow-md transition-all duration-300 hover:scale-[1.02] cursor-pointer ${o.delivered ? 'opacity-60' : ''}`;;
+      if (animate) {
+        wrapper.classList.add('opacity-0', 'transform', 'translate-y-4');
+      }
       wrapper.innerHTML = `
         <div class="flex items-center justify-between mb-2">
           <div class="font-semibold text-xl flex items-center min-w-0">
@@ -1213,17 +1220,16 @@ export function renderClients(container: HTMLElement): void {
 
       ordersListContainer.appendChild(wrapper);
 
-      // Animación escalonada para cada item
-      setTimeout(() => {
-        wrapper.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-        wrapper.style.opacity = o.delivered ? '0.6' : '1';
-        wrapper.style.transform = 'translateY(0)';
-      }, index * 100);
+      if (animate) {
+        setTimeout(() => {
+          wrapper.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          wrapper.style.opacity = o.delivered ? '0.6' : '1';
+          wrapper.style.transform = 'translateY(0)';
+        }, index * 100);
+      }
     });
 
-    // Event listeners después de que se rendericen todos los items
     setTimeout(() => {
-      // delivered toggle handlers
       ordersListContainer.querySelectorAll<HTMLInputElement>('.deliveredToggle').forEach(inp => {
         inp.addEventListener('change', e => {
           const toggle = e.currentTarget as HTMLInputElement;
@@ -1235,21 +1241,17 @@ export function renderClients(container: HTMLElement): void {
               const dot = bg.firstElementChild!;
               bg.className = `toggle-bg w-11 h-6 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full transition-all duration-300`;
               dot.className = `toggle-dot absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
-
-              // Update the status pill
               const statusPill = toggle.closest('.p-3')?.querySelector('span.inline-flex');
               if (statusPill) {
                 statusPill.className = `inline-flex items-center px-2 py-1 rounded-full text-sm font-medium transition-all duration-200 ${isDelivered ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}`;
                 statusPill.innerHTML = `${isDelivered ? '<i class="fa fa-check-circle mr-1 text-base"></i>Entregado' : '<i class="fa fa-times-circle mr-1 text-base"></i>Pendiente'}`;
               }
-
-              // Update card opacity
               const card = toggle.closest('.p-3');
               if (card) {
                 card.className = `order-item p-3 bg-gray-50 dark:bg-dark-bg rounded-lg border dark:border-dark-border hover:shadow-md transition-all duration-300 hover:scale-[1.02] ${isDelivered ? 'opacity-60' : ''}`;
               }
             };
-            handleDeliveryToggle(order, toggle, updateVisuals, refreshListView);
+            handleDeliveryToggle(order, toggle, updateVisuals, () => refreshListView(false));
           }
         });
       });
@@ -1271,7 +1273,7 @@ export function renderClients(container: HTMLElement): void {
           button.style.transform = 'scale(0.95)';
           setTimeout(() => {
             button.style.transform = '';
-            showOrderDetails(button.dataset.id!, refreshListView);
+            showOrderDetails(button.dataset.id!, () => refreshListView(false));
           }, 100);
         });
       });
@@ -1289,7 +1291,33 @@ export function renderClients(container: HTMLElement): void {
     }, list.length * 100 + 100);
   };
 
-  filterInp.addEventListener('input', refreshListView);
+  const refreshListView = (animate = false) => {
+    const list = OrderRepo.getSorted();
+    const filterText = filterInp.value.toLowerCase().trim();
+
+    if (!filterText) {
+      renderList(list, animate);
+      return;
+    }
+
+    const searchablePhoneTerm = getSearchablePhone(filterText);
+
+    const filtered = list.filter(order => {
+      const nameMatch = normalizeName(order.fullName).toLowerCase().includes(filterText);
+
+      let phoneMatch = false;
+      if (searchablePhoneTerm.length > 0) {
+        const orderPhoneAsSearchable = getSearchablePhone(order.phone);
+        phoneMatch = orderPhoneAsSearchable.includes(searchablePhoneTerm);
+      }
+
+      return nameMatch || phoneMatch;
+    });
+
+    renderList(filtered, animate);
+  }
+
+  filterInp.addEventListener('input', () => refreshListView(false));
 
   container.querySelector('#btnAddOrder')?.addEventListener('click', (e) => {
     const button = e.currentTarget as HTMLElement;
@@ -1300,5 +1328,6 @@ export function renderClients(container: HTMLElement): void {
     }, 100);
   });
 
-  refreshListView();
+  document.addEventListener('refreshViews', () => refreshListView(false));
+  refreshListView(true);
 }

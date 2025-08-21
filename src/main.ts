@@ -140,6 +140,26 @@ function bootstrap(): void {
     });
   });
 
+  // Scroll-to-top button logic
+  const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+  if (scrollToTopBtn) {
+    window.addEventListener('scroll', () => {
+      const shouldBeVisible = window.scrollY > 200 && (currentScreen === 'clients' || currentScreen === 'foods');
+      if (shouldBeVisible) {
+        scrollToTopBtn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+      } else {
+        scrollToTopBtn.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+      }
+    }, { passive: true });
+
+    scrollToTopBtn.addEventListener('click', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+  }
+
   // Eventos globales para abrir formularios desde otros módulos
   document.addEventListener('openOrderForm', (e) => {
     const id = (e as CustomEvent).detail?.id as string | undefined;
@@ -209,7 +229,7 @@ function openOrderForm(orderId?: string): void {
         <span>${editing ? 'Editar Pedido' : 'Agregar Pedido'}</span>
         ${isDelivered ? '<span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">🔒 ENTREGADO</span>' : ''}
       </h3>
-      ${isDelivered ? '<div class="text-center text-sm text-gray-600 dark:text-gray-400 mt-1">Los campos están bloqueados porque el pedido fue entregado</div>' : ''}
+    <!--  ${isDelivered ? '<div class="text-center text-sm text-gray-600 dark:text-gray-400 mt-1">Los campos están bloqueados porque el pedido fue entregado</div>' : ''} -->
     </div>
 
     <!-- 2. CONTENIDO DEL FORMULARIO (LA ÚNICA PARTE CON SCROLL) -->
@@ -299,8 +319,6 @@ function openOrderForm(orderId?: string): void {
     </div>
   </div>`;
 
-  document.documentElement.style.overflow = 'hidden';
-
   const setVH = () => {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -310,9 +328,8 @@ function openOrderForm(orderId?: string): void {
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  const closeModalAndRestoreScroll = () => {
+  const cleanupAndClose = () => {
     close();
-    document.documentElement.style.overflow = '';
     window.removeEventListener('resize', setVH);
   };
 
@@ -606,22 +623,22 @@ function openOrderForm(orderId?: string): void {
       if (editing) {
         success = await OrderRepo.update({ ...editing, ...payload });
         if (success) {
-          UI.toast('✅ Pedido actualizado correctamente.');
+          UI.toast('Pedido actualizado.');
           cleanup();
-          closeModalAndRestoreScroll();
-          renderCurrent();
+          cleanupAndClose();
+          document.dispatchEvent(new CustomEvent('refreshViews'));
         }
         return;
       } else {
         const newOrder = await OrderRepo.add(payload);
         if (newOrder) {
           success = true;
-          UI.toast('✅ Pedido agregado correctamente.');
+          UI.toast('Pedido agregado.');
         }
       }
 
       if (success) {
-        renderCurrent();
+        document.dispatchEvent(new CustomEvent('refreshViews'));
 
         orderForm.reset();
         quantityInput.value = '0';
@@ -665,7 +682,7 @@ function openOrderForm(orderId?: string): void {
     timeInput.removeEventListener('change', onFormFieldChange);
   };
 
-  const onCancel = () => { cleanup(); closeModalAndRestoreScroll(); };
+  const onCancel = () => { cleanup(); cleanupAndClose(); };
   const onPhoneInput = (ev: Event) => {
     handlePhoneInput(ev);
     updatePhoneValidation();
@@ -799,15 +816,29 @@ function openFoodForm(foodId?: string): void {
 
           <!-- Checkbox 'Activo' (Solo en modo edición) -->
           ${editing ? `
-            <div class="${isLinkedToOrder ? 'opacity-60' : ''}" title="${isLinkedToOrder ? 'No se puede desactivar: la comida está en un pedido activo.' : ''}">
-              <label class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400 ${isLinkedToOrder ? 'cursor-not-allowed' : 'cursor-pointer'}">
-                <i class="fa fa-power-off w-3"></i>Comida
-              </label>
-              <div class="mt-1">
-                <input id="isActive" name="isActive" type="checkbox" ${editing.isActive ? 'checked' : ''} ${disabledAttr} class="sr-only peer" />
-                <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-accent relative"></div>
-              </div>
-            </div>
+            <div class="flex flex-col justify-center ${isLinkedToOrder ? 'opacity-60' : ''}" 
+     title="${isLinkedToOrder ? 'No se puede desactivar: la comida está en un pedido activo.' : 'Activar/desactivar comida'}">
+  
+  <label for="isActive" class="flex flex-col gap-2 ${isLinkedToOrder ? 'cursor-not-allowed' : 'cursor-pointer'}">
+    <!-- Texto -->
+    <span class="flex items-center gap-2 text-lg font-bold text-gray-600 dark:text-gray-400">
+      <i class="fa fa-power-off w-3"></i> Activa
+    </span>
+    <!-- Toggle debajo -->
+    <div class="relative">
+      <input id="isActive" name="isActive" type="checkbox" 
+             ${editing.isActive ? 'checked' : ''} ${disabledAttr} 
+             class="sr-only peer" />
+      <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 
+                  peer-checked:after:translate-x-full peer-checked:after:border-white 
+                  after:content-[''] after:absolute after:top-0.5 after:left-[2px] 
+                  after:bg-white after:border after:rounded-full after:h-5 after:w-5 
+                  after:transition-all dark:border-gray-600 peer-checked:bg-accent">
+      </div>
+    </div>
+  </label>
+</div>
+
           ` : ``}
         </div>
 
@@ -870,8 +901,6 @@ function openFoodForm(foodId?: string): void {
     </div>
   </div>`;
 
-  document.documentElement.style.overflow = 'hidden';
-
   const setVH = () => {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -881,9 +910,8 @@ function openFoodForm(foodId?: string): void {
 
   const { close, element } = UI.modal(html, { closeOnBackdropClick: false });
 
-  const closeModalAndRestoreScroll = () => {
+  const cleanupAndClose = () => {
     close();
-    document.documentElement.style.overflow = '';
     window.removeEventListener('resize', setVH);
   };
 
@@ -999,21 +1027,22 @@ function openFoodForm(foodId?: string): void {
       const endTime = String(data.get('endTime') || '');
 
       if (!name) { UI.toast('Nombre requerido'); return; }
-      if (FoodRepo.nameExists(name, editing?.id)) { UI.toast('El nombre ya existe'); return; }
+      if (FoodRepo.nameExists(name, editing?.id)) { UI.toast('Comida existente', 5000); return; }
 
       const combosToSave = comboToggle.checked ? tempCombos : [];
 
       if (editing) {
         const updatedFood = { ...editing, name, cost, price, stock, isActive, combos: combosToSave };
         await FoodRepo.update(updatedFood, { startTime, endTime });
-        UI.toast('Comida actualizada correctamente');
+        UI.toast('Comida actualizada.');
       } else {
         await FoodRepo.add({ name, cost, price, stock, combos: combosToSave }, { startTime, endTime });
-        UI.toast('Comida agregada correctamente');
+        UI.toast('Comida agregada.');
       }
 
-      closeModalAndRestoreScroll();
-      renderCurrent();
+      cleanupAndClose();
+      // Defer UI update to prevent race conditions that cause a page reload effect.
+      setTimeout(() => document.dispatchEvent(new CustomEvent('refreshViews')), 0);
     } finally {
       submitBtn.disabled = false;
       UI.hideSpinner();
@@ -1021,7 +1050,7 @@ function openFoodForm(foodId?: string): void {
   };
 
   foodForm.addEventListener('submit', onSubmit);
-  element.querySelector('#cancelFood')!.addEventListener('click', closeModalAndRestoreScroll);
+  element.querySelector('#cancelFood')!.addEventListener('click', cleanupAndClose);
   comboToggle.addEventListener('change', () => {
     comboFieldsContainer.classList.toggle('hidden', !comboToggle.checked);
     if (!comboToggle.checked) {

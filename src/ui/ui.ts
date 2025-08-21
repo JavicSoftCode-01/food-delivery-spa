@@ -182,6 +182,16 @@ export const UI = {
 
       <div id="modalRoot"></div>
       <div id="toastRoot" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4"></div>
+
+      <button id="scrollToTopBtn" title="Volver arriba" 
+        class="fixed z-[9999] bottom-20 sm:bottom-5 right-7 sm:right-10 w-12 h-12 
+               bg-gradient-to-br from-accent to-blue-600 text-white 
+               rounded-full shadow-lg flex items-center justify-center 
+               text-2xl opacity-0 pointer-events-none transform translate-y-4
+               transition-all duration-300 ease-out hover:shadow-xl 
+               hover:from-accent/90 hover:to-blue-700/90 hover:scale-110">
+        <i class="fa-solid fa-chevron-up"></i>
+      </button>
     `;
 
     document.querySelectorAll<HTMLElement>('#bottomNav .nav-item').forEach((b) => {
@@ -270,6 +280,16 @@ export const UI = {
   modal(html: string, options: { closeOnBackdropClick?: boolean } = {}): ModalHandle {
     const { closeOnBackdropClick = true } = options;
     const mRoot = document.getElementById('modalRoot')!;
+    const docElement = document.documentElement;
+
+    // --- Bloqueo de scroll y botón ---
+    if (mRoot.children.length === 0) { // Si es el primer modal
+      docElement.style.overflow = 'hidden';
+      const scrollToTopBtn = document.getElementById('scrollToTopBtn') as HTMLElement;
+      if (scrollToTopBtn) {
+        scrollToTopBtn.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+      }
+    }
 
     const modalWrapper = document.createElement('div');
     modalWrapper.className = 'modal-instance';
@@ -311,12 +331,23 @@ export const UI = {
         if (modalWrapper.parentNode) {
           modalWrapper.parentNode.removeChild(modalWrapper);
         }
+        
+        // --- Desbloqueo de scroll y botón ---
+        if (mRoot.children.length === 0) { // Si era el último modal
+          docElement.style.overflow = '';
+          const scrollToTopBtn = document.getElementById('scrollToTopBtn') as HTMLElement;
+          if (scrollToTopBtn) {
+            // Re-evaluar visibilidad del botón de scroll basado en la posición de la ventana
+            if (window.scrollY > 200) {
+              scrollToTopBtn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            } else {
+              scrollToTopBtn.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }
+          }
+        }
       };
 
-      // Listen to transitionend on content (since it has more transitions)
       content?.addEventListener('transitionend', onTransitionEnd, { once: true });
-
-      // Safety timeout in case transitionend doesn't fire
       setTimeout(onTransitionEnd, 350);
     };
 
@@ -332,7 +363,7 @@ export const UI = {
   },
 
   /** Shows a confirmation modal with improved UI structure. */
- confirm(message: string, onConfirm: () => void, onCancel?: () => void): void {
+  confirm(message: string, onConfirm: () => void, onCancel?: () => void): void {
     const html = `
       <div class="text-center p-2">
         <div class="mb-2">
@@ -365,23 +396,15 @@ export const UI = {
       </div>
     `;
 
-    // Bloquear scroll del fondo
-    document.documentElement.style.overflow = 'hidden';
-
     const { close, element } = this.modal(html, { closeOnBackdropClick: false });
 
-    const closeAndRestore = () => {
-      close();
-      document.documentElement.style.overflow = '';
-    };
-
     element.querySelector('#confirmOk')!.addEventListener('click', () => {
-      closeAndRestore();
+      close();
       onConfirm();
     });
 
     element.querySelector('#confirmCancel')!.addEventListener('click', () => {
-      closeAndRestore();
+      close();
       if (onCancel) {
         onCancel();
       }
