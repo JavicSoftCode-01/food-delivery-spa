@@ -1,84 +1,214 @@
 # Food Delivery SPA
 
-Una Aplicación de Página Única (SPA) para la gestión de pedidos de comida a domicilio, diseñada para ser una herramienta simple y eficiente para pequeñas empresas.
+Una Aplicación de Página Única (SPA) moderna para la gestión de pedidos de comida a domicilio, diseñada para pequeñas empresas que buscan digitalizar sus operaciones.
 
-Construida con **TypeScript** y **Vite**, y estilizada con **Tailwind CSS**.
-
-## Contexto de la Aplicación
-
-Esta aplicación permite a los negocios de comida gestionar sus operaciones diarias de manera centralizada. El sistema maneja un flujo de trabajo completo: desde la gestión de los productos del menú (comidas y combos) hasta la toma de pedidos de clientes y el seguimiento de su estado (pendiente o entregado).
-
-El objetivo es proporcionar una interfaz rápida, intuitiva y responsiva que funcione en cualquier dispositivo, facilitando la administración de pedidos en tiempo real.
-
-## Características Principales
-
-- **Dashboard:** Ofrece un resumen visual del estado del negocio, incluyendo pedidos pendientes, pedidos entregados, ingresos totales y la variedad de productos disponibles.
-- **Gestión de Clientes y Pedidos:** Permite crear, editar y visualizar los detalles de los pedidos. Incluye la capacidad de contactar a los clientes por teléfono o WhatsApp directamente desde la aplicación.
-- **Gestión de Comidas:** Administra el menú, permitiendo agregar, editar y ver los productos. También proporciona un historial de ventas para cada artículo.
-- **Configuraciones:** Permite ajustar parámetros de la aplicación, como el tiempo de espera entre entregas y la activación del modo oscuro.
-- **Persistencia de Datos:** Toda la información se almacena localmente en el navegador (`localStorage`), lo que significa que no se requiere una base de datos externa.
-
-## Funcionamiento Detallado
-
-### 1. Gestión de Comidas
-- **Creación/Edición:** Puedes agregar nuevas comidas con su costo, precio de venta, stock inicial y horario de disponibilidad. El sistema valida que el precio de venta asegure una ganancia mínima.
-- **Combos:** Es posible definir ofertas de combos (ej. "2 por $5.00"), que se asocian a una comida principal. El sistema también valida la rentabilidad de los combos.
-- **Disponibilidad:** Las comidas pueden activarse o desactivarse. Una comida no puede desactivarse si está asociada a un pedido activo.
-
-### 2. Gestión de Pedidos
-- **Formulario Inteligente:** Al crear un pedido, el formulario valida la información en tiempo real:
-    - **Teléfono:** Normaliza y valida el formato del número de teléfono.
-    - **Conflictos de Horario:** Detecta si la hora de entrega solicitada está demasiado cerca de otro pedido y sugiere automáticamente una nueva hora para evitar conflictos.
-    - **Stock:** Verifica que haya suficiente stock del producto seleccionado antes de confirmar el pedido.
-- **Estado del Pedido:** Los pedidos pueden marcarse como "entregados". Una vez entregados, el sistema inicia un conteo regresivo para archivarlos y limpiar la lista de pedidos activos.
-
-### 3. Flujo de Trabajo
-El flujo de trabajo típico sería:
-1.  **Configurar el menú:** Agregar las comidas y combos disponibles en la sección "Comidas".
-2.  **Recibir un pedido:** Ir a la sección "Clientes" y hacer clic en "Agregar Pedido".
-3.  **Llenar el formulario:** Ingresar los datos del cliente, seleccionar la comida y la cantidad. El sistema calculará el total y validará la información.
-4.  **Marcar como entregado:** Una vez que el pedido se entrega, se marca como tal en la lista de clientes.
-5.  **Archivar:** Después de un tiempo, los pedidos entregados se pueden archivar para mantener la interfaz limpia.
-
-## Dependencias Requeridas
-
-Para ejecutar este proyecto, solo necesitas tener instalado **Node.js** y **npm** (o un gestor de paquetes compatible como Yarn o pnpm).
-
-- **Node.js:** Versión 18 o superior.
-- **npm:** Versión 9 o superior.
-
-## Guía de Instalación
-
-Sigue estos pasos para configurar el proyecto en tu sistema local.
-
-### 1. Clonar el Repositorio
-Primero, clona el repositorio desde GitHub:
-```bash
-git clone https://github.com/JavicSoftCode/food-delivery-spa.git
-cd food-delivery-spa
-```
-
-### 2. Instalar Dependencias
-Una vez dentro del directorio del proyecto, instala las dependencias necesarias. El comando es el mismo para Windows, macOS y Linux.
-
-```bash
-npm install
-```
-
-### 3. Ejecutar la Aplicación
-Para iniciar la aplicación en modo de desarrollo, ejecuta:
-```bash
-npm run dev
-```
-Esto iniciará un servidor de desarrollo local. Podrás acceder a la aplicación en tu navegador a través de la URL que se muestra en la terminal (generalmente `http://localhost:5173`).
-
-### 4. Construir para Producción
-Si deseas generar una versión optimizada para producción, utiliza el siguiente comando:
-```bash
-npm run build
-```
-Los archivos listos para desplegar se generarán en la carpeta `dist/`.
+**Tecnologías:** TypeScript • Vite • Tailwind CSS • Arquitectura Modular
 
 ---
 
-Realizado por **JavicSoftCode**.
+## 📋 Descripción del Proyecto
+
+Esta aplicación centraliza las operaciones diarias de negocios de comida, desde la gestión del menú hasta el seguimiento de pedidos. Proporciona una interfaz rápida, intuitiva y responsiva que funciona en cualquier dispositivo.
+
+### 🎯 Características Principales
+
+- **📊 Dashboard Inteligente**: Resumen visual con pedidos pendientes, entregados, ingresos totales y estadísticas de productos
+- **👥 Gestión de Pedidos**: Creación, edición y seguimiento completo de pedidos con validaciones en tiempo real
+- **🍕 Administración de Menú**: Control total del inventario, precios, combos y disponibilidad de productos
+- **📱 Contacto Directo**: Integración con WhatsApp y llamadas telefónicas desde la aplicación
+- **⚙️ Configuración Flexible**: Personalización de tiempos de entrega, modo oscuro y parámetros del negocio
+- **💾 Persistencia Local**: Almacenamiento en `localStorage` sin necesidad de base de datos externa
+
+---
+
+## 🚀 Instalación y Configuración
+
+### Requisitos Previos
+- **Node.js**: Versión 18 o superior
+- **npm**: Versión 9 o superior
+
+### Pasos de Instalación
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/JavicSoftCode/food-delivery-spa.git
+   cd food-delivery-spa
+   ```
+
+2. **Instalar dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Ejecutar en desarrollo**
+   ```bash
+   npm run dev
+   ```
+   La aplicación estará disponible en `http://localhost:5173`
+
+4. **Construir para producción**
+   ```bash
+   npm run build
+   ```
+
+### Comandos Disponibles
+
+```bash
+npm run dev       # Servidor de desarrollo
+npm run build     # Build de producción
+npm run preview   # Preview del build
+npm run deploy    # Deploy a GitHub Pages
+```
+
+---
+
+## 💼 Guía de Uso
+
+### 1️⃣ Configuración Inicial
+- **Configurar el menú**: Agregar comidas y combos en la sección "Comidas"
+- **Definir precios**: Establecer costos y precios de venta con validación de rentabilidad
+- **Configurar horarios**: Definir disponibilidad de productos por horario
+
+### 2️⃣ Gestión de Pedidos
+- **Crear pedido**: Formulario inteligente con validaciones automáticas
+- **Validación en tiempo real**:
+  - Normalización de números telefónicos
+  - Detección de conflictos de horario
+  - Verificación de stock disponible
+- **Seguimiento**: Estados de pedido (pendiente/entregado) con archivado automático
+
+### 3️⃣ Funcionalidades Avanzadas
+- **Combos inteligentes**: Ofertas automáticas con validación de rentabilidad
+- **Contacto directo**: Botones de WhatsApp y llamada desde cada pedido
+- **Historial de ventas**: Análisis de rendimiento por producto
+- **Modo oscuro**: Cambio de tema para mejor experiencia visual
+
+---
+
+## 🏗️ Arquitectura del Proyecto
+
+### Estructura de Directorios
+
+```
+food-delivery-spa/
+├── src/
+│   ├── app/                 # Núcleo de la aplicación
+│   │   ├── config.ts        # Configuración centralizada
+│   │   ├── router.ts        # Gestión de rutas
+│   │   └── header.ts        # Header con estado global
+│   │
+│   ├── features/            # Funcionalidades por dominio
+│   │   ├── foods/           # Gestión de comidas
+│   │   │   ├── components/  # Componentes específicos
+│   │   │   ├── hooks/       # Custom hooks
+│   │   │   └── *.ts         # Lógica de negocio
+│   │   └── orders/          # Gestión de pedidos
+│   │       ├── components/  # Componentes específicos
+│   │       └── *.ts         # Formularios y lógica
+│   │
+│   ├── services/            # Servicios globales
+│   │   ├── api.ts           # Cliente HTTP centralizado
+│   │   ├── foodService.ts   # Lógica de comidas
+│   │   ├── orderService.ts  # Lógica de pedidos
+│   │   └── storage.ts       # localStorage wrapper
+│   │
+│   ├── ui/                  # Interfaz visual
+│   │   ├── screens/         # Pantallas principales
+│   │   ├── layout/          # Layouts reutilizables
+│   │   ├── theme/           # Sistema de tema
+│   │   └── components.ts    # Componentes base
+│   │
+│   └── utils/               # Utilidades
+│       ├── formatters.ts    # Formateadores
+│       ├── validators.ts    # Validaciones
+│       ├── business.ts      # Reglas de negocio
+│       └── global.ts        # Funciones genéricas
+```
+
+### Principios de Diseño
+
+- **🔄 Escalabilidad**: Arquitectura modular que permite crecimiento
+- **🛠️ Mantenibilidad**: Código organizado por responsabilidades
+- **♻️ Reutilización**: Componentes y hooks compartidos
+- **⚡ Performance**: Lazy loading y optimizaciones
+- **🧪 Testing**: Estructura preparada para pruebas unitarias
+
+### Flujo de Datos
+
+```
+UI Components → Custom Hooks → Services → Storage/API
+     ↑              ↓           ↓         ↓
+     └── State Management ←── Events ←── Updates
+```
+
+---
+
+## 🎨 Características Técnicas
+
+### Sistema de Tema
+- **Tema Claro/Oscuro**: Cambio dinámico con persistencia
+- **Variables CSS**: Sistema centralizado de colores y espaciado
+- **Transiciones**: Animaciones suaves (150ms, 300ms, 500ms)
+- **Responsive**: Mobile-first con breakpoints consistentes
+
+### Validaciones Inteligentes
+- **Teléfonos**: Normalización automática de formatos
+- **Horarios**: Prevención de conflictos de entrega
+- **Stock**: Verificación en tiempo real
+- **Precios**: Validación de rentabilidad mínima
+
+### Gestión de Estado
+- **Custom Hooks**: Estado local optimizado
+- **localStorage**: Persistencia automática
+- **Event Listeners**: Actualizaciones en tiempo real
+- **Cache**: Sistema de cache inteligente
+
+---
+
+## 🔮 Roadmap
+
+### Corto Plazo
+- [ ] Implementar lazy loading de pantallas
+- [ ] Agregar unit tests con Jest
+- [ ] Optimizar bundle size
+
+### Mediano Plazo
+- [ ] Sistema de notificaciones push
+- [ ] Soporte offline con Service Workers
+- [ ] Capacidades PWA completas
+
+### Largo Plazo
+- [ ] Backend API real con base de datos
+- [ ] Sistema de autenticación
+- [ ] Soporte multi-tenant
+
+---
+
+## 🤝 Contribución
+
+1. **Fork** el repositorio
+2. **Crea** una rama: `git checkout -b feature/nueva-funcionalidad`
+3. **Sigue** las convenciones de código establecidas
+4. **Testea** todos los cambios
+5. **Envía** un pull request detallado
+
+### Convenciones de Código
+- **Archivos**: PascalCase para componentes, camelCase para utilidades
+- **Funciones**: camelCase con verbos descriptivos
+- **Variables**: camelCase con nombres claros
+- **Constantes**: UPPER_SNAKE_CASE
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+---
+
+## 👨‍💻 Autor
+
+**JavicSoftCode**
+- GitHub: [@JavicSoftCode](https://github.com/JavicSoftCode)
+
+---
