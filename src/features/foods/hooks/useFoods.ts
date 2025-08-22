@@ -34,7 +34,7 @@ export function useFoods(): UseFoodsReturn {
    */
   const loadFoods = (): void => {
     try {
-      foods = FoodRepo.findAll();
+      foods = FoodRepo.getAll();
       error = null;
     } catch (err) {
       error = 'Error al cargar las comidas';
@@ -65,14 +65,10 @@ export function useFoods(): UseFoodsReturn {
         isActive: true
       };
 
-      const success = FoodRepo.create(newFood);
-      if (success) {
-        refreshFoods();
-        return true;
-      } else {
-        error = 'No se pudo crear la comida';
-        return false;
-      }
+      // Usar el método add del FoodRepo
+      await FoodRepo.add(newFood, { startTime: '08:00', endTime: '23:00' });
+      refreshFoods();
+      return true;
     } catch (err) {
       error = 'Error al crear la comida';
       console.error('Error creating food:', err);
@@ -101,14 +97,10 @@ export function useFoods(): UseFoodsReturn {
         ...updates
       };
 
-      const success = FoodRepo.update(id, updatedFood);
-      if (success) {
-        refreshFoods();
-        return true;
-      } else {
-        error = 'No se pudo actualizar la comida';
-        return false;
-      }
+      // Usar el método update del FoodRepo
+      await FoodRepo.update(updatedFood);
+      refreshFoods();
+      return true;
     } catch (err) {
       error = 'Error al actualizar la comida';
       console.error('Error updating food:', err);
@@ -119,24 +111,31 @@ export function useFoods(): UseFoodsReturn {
   };
 
   /**
-   * Elimina una comida
+   * Elimina una comida (desactiva en lugar de eliminar físicamente)
    */
   const deleteFood = async (id: string): Promise<boolean> => {
     try {
       loading = true;
       error = null;
       
-      const success = FoodRepo.delete(id);
+      const food = FoodRepo.findById(id);
+      if (!food) {
+        error = 'Comida no encontrada';
+        return false;
+      }
+
+      // En lugar de eliminar, desactivar
+      const success = await updateFood(id, { isActive: false });
       if (success) {
         refreshFoods();
         return true;
       } else {
-        error = 'No se pudo eliminar la comida';
+        error = 'No se pudo desactivar la comida';
         return false;
       }
     } catch (err) {
-      error = 'Error al eliminar la comida';
-      console.error('Error deleting food:', err);
+      error = 'Error al desactivar la comida';
+      console.error('Error deactivating food:', err);
       return false;
     } finally {
       loading = false;

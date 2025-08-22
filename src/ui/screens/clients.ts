@@ -1,6 +1,6 @@
 import { OrderRepo } from '../../services/orderService';
 import { normalizeName, getSearchablePhone, formatTime } from '../../utils';
-import { handleDeliveryToggle } from '../components';
+import { handleDeliveryToggle } from '../../features/orders/deliveryToggle';
 
 export function renderClients(container: HTMLElement): void {
   setTimeout(() => window.scrollTo(0, 0), 0);

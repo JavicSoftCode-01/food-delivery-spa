@@ -3,6 +3,15 @@
 
 import { CONFIG } from '../app/config';
 
+// Declaración para import.meta.env
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_API_URL?: string;
+    };
+  }
+}
+
 /**
  * Configuración base para las llamadas API
  */
@@ -90,12 +99,12 @@ class APIClient {
         throw error;
       }
       
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new APIError('Timeout de la petición', 408);
       }
       
       throw new APIError(
-        error.message || 'Error de conexión',
+        error instanceof Error ? error.message : 'Error de conexión',
         0
       );
     }

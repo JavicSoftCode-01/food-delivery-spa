@@ -168,9 +168,9 @@ UI Components → Custom Hooks → Services → Storage/API
 ## 🔮 Roadmap
 
 ### Corto Plazo
-- [ ] Implementar lazy loading de pantallas
+- [✅] Implementar lazy loading de pantallas
 - [ ] Agregar unit tests con Jest
-- [ ] Optimizar bundle size
+- [✅] Optimizar bundle size
 
 ### Mediano Plazo
 - [ ] Sistema de notificaciones push

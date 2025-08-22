@@ -1,12 +1,13 @@
 // src\main.ts
 import './styles.css';
 import { UI } from './ui/ui';
-import { renderDashboard, renderClients, renderFoods, renderSettings, openOrderForm, openFoodForm, openSalesHistoryModal } from './ui/components';
 import { updateGlobalHeaderState } from './app/header';
 import { Router, Screen } from './app/router';
+import { loadFeature } from './app/lazyLoader';
+import { prefetchCritical } from './app/intelligentPrefetch';
 
-/** Renderiza la pantalla actual usando los renderers del UI. */
-function renderCurrent(): void {
+/** Renderiza la pantalla actual usando lazy loading. */
+async function renderCurrent(): Promise<void> {
 	const current = Router.getScreen();
 	UI.updateTitle(current);
 	UI.renderNavActive(current);
@@ -14,13 +15,32 @@ function renderCurrent(): void {
 
 	const main = document.getElementById('mainArea')!;
 	main.innerHTML = '';
-	const container = document.createElement('div');
-	main.appendChild(container);
-
-	if (current === 'dashboard') renderDashboard(container);
-	else if (current === 'clients') renderClients(container);
-	else if (current === 'foods') renderFoods(container);
-	else if (current === 'settings') renderSettings(container);
+	
+	// Mostrar loading state
+	main.innerHTML = '<div class="flex items-center justify-center h-32"><div class="spinner"></div></div>';
+	
+	try {
+		// Obtener el renderizador lazy
+		const renderer = await Router.getRenderer(current);
+		
+		// Limpiar y renderizar
+		main.innerHTML = '';
+		const container = document.createElement('div');
+		main.appendChild(container);
+		
+		renderer(container);
+	} catch (error) {
+		console.error('Error renderizando pantalla:', error);
+		main.innerHTML = `
+			<div class="flex flex-col items-center justify-center h-32 text-red-500">
+				<i class="fa fa-exclamation-triangle fa-2x mb-2"></i>
+				<p>Error cargando la pantalla</p>
+				<button onclick="location.reload()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded">
+					Recargar
+				</button>
+			</div>
+		`;
+	}
 }
 
 import { CONFIG } from './app/config';
@@ -43,9 +63,23 @@ function bootstrap(): void {
 	// Delegado de navegación (botones creados por renderShell)
 	document.querySelectorAll<HTMLElement>('#bottomNav .nav-item').forEach((b) => {
 		b.setAttribute('tabindex', '0');
-		b.addEventListener('click', (e) => {
+		b.addEventListener('click', async (e) => {
 			const screen = (e.currentTarget as HTMLElement).dataset.screen as Screen | undefined;
-			if (screen) Router.setScreen(screen);
+			if (screen) {
+				// Mostrar loading state en el botón
+				const button = e.currentTarget as HTMLElement;
+				const originalText = button.innerHTML;
+				button.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+				button.setAttribute('disabled', 'true');
+				
+				try {
+					await Router.setScreen(screen);
+				} finally {
+					// Restaurar botón
+					button.innerHTML = originalText;
+					button.removeAttribute('disabled');
+				}
+			}
 		});
 	});
 
@@ -67,34 +101,67 @@ function bootstrap(): void {
 		});
 	}
 
-	// Eventos globales para abrir formularios desde otros módulos
-	document.addEventListener('openOrderForm', (e) => {
+	// Eventos globales para abrir formularios usando lazy loading
+	document.addEventListener('openOrderForm', async (e) => {
 		const id = (e as CustomEvent).detail?.id as string | undefined;
-		openOrderForm(id);
+		try {
+			const { openOrderForm } = await loadFeature('orderForm');
+			openOrderForm(id);
+		} catch (error) {
+			console.error('Error abriendo formulario de pedido:', error);
+		}
 	});
 
-	document.addEventListener('openFoodForm', (e) => {
+	document.addEventListener('openFoodForm', async (e) => {
 		const id = (e as CustomEvent).detail?.id as string | undefined;
-		openFoodForm(id);
+		try {
+			const { openFoodForm } = await loadFeature('foodForm');
+			openFoodForm(id);
+		} catch (error) {
+			console.error('Error abriendo formulario de comida:', error);
+		}
 	});
 
-	document.addEventListener('openSalesHistory', (e) => {
+	document.addEventListener('openSalesHistory', async (e) => {
 		const foodId = (e as CustomEvent).detail?.foodId as string | undefined;
-		if (foodId) openSalesHistoryModal(foodId);
+		if (foodId) {
+			try {
+				const { openSalesHistoryModal } = await loadFeature('salesHistory');
+				openSalesHistoryModal(foodId);
+			} catch (error) {
+				console.error('Error abriendo historial de ventas:', error);
+			}
+		}
 	});
 
-	// Eventos auxiliares para abrir modales transversales
-	document.addEventListener('openOrderDetails', (e) => {
+	// Eventos auxiliares para abrir modales transversales usando lazy loading
+	document.addEventListener('openOrderDetails', async (e) => {
 		const id = (e as CustomEvent).detail?.id as string | undefined;
 		if (!id) return;
-		import('./ui/components').then(m => m.showOrderDetails(id, () => document.dispatchEvent(new CustomEvent('refreshViews'))));
+		try {
+			const { showOrderDetails } = await loadFeature('orderDetails');
+			showOrderDetails(id, () => document.dispatchEvent(new CustomEvent('refreshViews')));
+		} catch (error) {
+			console.error('Error abriendo detalles del pedido:', error);
+		}
 	});
 
-	document.addEventListener('openCallModal', (e) => {
+	document.addEventListener('openCallModal', async (e) => {
 		const phone = (e as CustomEvent).detail?.phone as string | undefined;
 		if (!phone) return;
-		import('./ui/components').then(m => m.showCallModal(phone));
+		try {
+			const { showCallModal } = await loadFeature('callModal');
+			showCallModal(phone);
+		} catch (error) {
+			console.error('Error abriendo modal de llamada:', error);
+		}
 	});
+
+	// Precarga todas las pantallas en background para mejorar UX
+	Router.preloadAll();
+
+	// Iniciar prefetching inteligente de módulos críticos
+	prefetchCritical();
 
 	Router.subscribe(() => renderCurrent());
 	renderCurrent();
@@ -103,3 +170,10 @@ function bootstrap(): void {
 /* -------------------- Bootstrap app -------------------- */
 
 bootstrap();
+
+// Inicializar monitoreo de bundle en desarrollo
+if (typeof window !== 'undefined') {
+  import('./utils/bundleAnalyzer').then(({ initializeBundleMonitoring }) => {
+    initializeBundleMonitoring();
+  }).catch(console.error);
+}

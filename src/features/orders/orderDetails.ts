@@ -2,7 +2,8 @@ import { UI } from '../../ui/ui';
 import { FoodRepo } from '../../services/foodService';
 import { OrderRepo } from '../../services/orderService';
 import { formatCurrency, formatTime } from '../../utils';
-import { handleDeliveryToggle, showCallModal } from '../../ui/components';
+import { handleDeliveryToggle } from '../../../src/features/orders/deliveryToggle';
+import { showCallModal } from './callModal';
 
 /** Muestra los detalles de un pedido en un modal y permite cambiar su estado. */
 export function showOrderDetails(orderId: string, onUpdate: () => void) {
@@ -35,7 +36,7 @@ export function showOrderDetails(orderId: string, onUpdate: () => void) {
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-semibold text-sm">
-                <i class="fa ${order.delivered ? 'fa-check-circle text-green-500' : 'fa-clock'} w-4 text-center"></i>${order.delivered ? 'Entregado a las:' : 'Entrega:'}
+                <i class="fa fa-clock w-4 text-center"></i>Entrega: 
               </label>
               <div class="text-gray-900 dark:text-dark-text font-medium pl-6 text-sm">${formatTime(order.delivered && order.deliveredAt ? order.deliveredAt : order.deliveryTime)}</div>
             </div>
@@ -146,14 +147,6 @@ export function showOrderDetails(orderId: string, onUpdate: () => void) {
     if (toggleBg && toggleDot) {
       toggleBg.className = `w-10 h-5 ${isDelivered ? 'bg-green-600' : 'bg-red-500'} rounded-full relative transition-colors`;
       toggleDot.className = `absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${isDelivered ? 'translate-x-5' : 'translate-x-0'}`;
-    }
-    const deliveryLabel = element.querySelector('.fa-clock, .fa-check-circle')?.parentElement as HTMLElement;
-    if (deliveryLabel) {
-      const deliveryTimeValueDiv = deliveryLabel.nextElementSibling as HTMLElement;
-      deliveryLabel.innerHTML = `<i class="fa ${isDelivered ? 'fa-check-circle text-green-500' : 'fa-clock'} w-4 text-center"></i>${isDelivered ? 'Entregado a las:' : 'Entrega:'}`;
-      if (deliveryTimeValueDiv) {
-        deliveryTimeValueDiv.textContent = formatTime(isDelivered && freshOrder.deliveredAt ? freshOrder.deliveredAt : freshOrder.deliveryTime);
-      }
     }
   };
 

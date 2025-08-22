@@ -5,14 +5,23 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:analyze": "node scripts/build-analyze.js",
+    "build:compress": "node scripts/build-with-compression.js",
+    "build:prod": "vite build",
     "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist -b deploy"
+    "predeploy": "npm run build:compress",
+    "deploy": "gh-pages -d dist -b deploy",
+    "analyze": "npm run build:analyze",
+    "compress": "npm run build:compress",
+    "clean": "rimraf dist",
+    "size": "npm run build && npm run analyze",
+    "prefetch:test": "npm run dev"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "rimraf": "^5.0.0"
   },
   "description": "",
   "main": "index.js",
@@ -20,7 +29,5 @@
   "author": "",
   "license": "ISC",
   "type": "module",
-  "dependencies": {
-    "@vitejs/plugin-vue": "^6.0.1"
-  }
+  "dependencies": {}
 }
