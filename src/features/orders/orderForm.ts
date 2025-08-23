@@ -418,7 +418,7 @@ export function openOrderForm(orderId?: string): void {
     }
   };
   const onFoodChange = () => { populateCombos(foodSelect.value); onFieldChange(); };
-  const onComboChange = () => onFieldChange();
+  const onComboChange = () => { comboQuantityInput.value = comboSelect.value ? '1' : '0'; onFieldChange(); };
   const onQuantityInput = () => onFieldChange();
   const onComboQuantityInput = () => { if (parseInt(comboQuantityInput.value, 10) === 0) UI.toast('La cantidad de combos debe ser mayor a 0.'); onFieldChange(); };
   const onFormFieldChange = () => updateSubmitButton();

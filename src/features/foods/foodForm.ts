@@ -28,7 +28,13 @@ export function openFoodForm(foodId?: string): void {
         <span>${editing ? 'Editar Comida' : 'Agregar Comida'}</span>
         ${isLinkedToOrder ? '<span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">🔒 EN USO</span>' : ''}
       </h3>
-      ${isLinkedToOrder ? '<div class="text-center text-xs text-gray-500 dark:text-gray-400 mt-1">Solo se permite agregar nuevos combos.</div>' : ''}
+      ${isLinkedToOrder ? `
+        <div class="hidden lg:block text-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Solo se permite agregar nuevos combos.
+        </div>
+      ` : ''}
+
+     <!-- ${isLinkedToOrder ? '<div class="text-center text-xs text-gray-500 dark:text-gray-400 mt-1">Solo se permite agregar nuevos combos.</div>' : ''}-->
     </div>
     <div class="flex-1 overflow-y-auto p-2 -mt-4">
       <form id="foodForm" class="space-y-3">
@@ -138,6 +144,33 @@ export function openFoodForm(foodId?: string): void {
 
   let originalFormStateJSON = '';
 
+  const validateComboQuantity = () => {
+    const stockInput = element.querySelector('#stock') as HTMLInputElement;
+    const currentStock = parseInt(stockInput.value, 10) || 0;
+    const quantity = parseInt(comboQuantityInput.value, 10) || 0;
+
+    comboQuantityInput.classList.remove('border-red-500', 'border-green-500');
+    comboQuantityInput.classList.add('border-gray-300');
+
+    if (quantity > 0) {
+      if (quantity > currentStock) {
+        comboQuantityInput.classList.remove('border-gray-300');
+        comboQuantityInput.classList.add('border-red-500');
+        addComboBtn.disabled = true;
+        addComboBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        UI.toast(`La cantidad del combo (${quantity}) excede el stock disponible (${currentStock})`, 6000);
+      } else {
+        comboQuantityInput.classList.remove('border-gray-300');
+        comboQuantityInput.classList.add('border-green-500');
+        addComboBtn.disabled = false;
+        addComboBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    } else {
+      addComboBtn.disabled = false;
+      addComboBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+  };
+
   const captureFormState = () => {
     const data = new FormData(foodForm);
     const state = {
@@ -202,9 +235,14 @@ export function openFoodForm(foodId?: string): void {
   addComboBtn.addEventListener('click', () => {
     const quantity = parseInt(comboQuantityInput.value, 10);
     const price = parseFloat(comboPriceInput.value);
+    const stockInput = element.querySelector('#stock') as HTMLInputElement;
+    const currentStock = parseInt(stockInput.value, 10) || 0;
+
     if (isNaN(quantity) || quantity < 2) { UI.toast('El combo debe tener al menos 2 U.'); return; }
+    if (quantity > currentStock) { UI.toast(`La cantidad del combo (${quantity}) excede el stock disponible (${currentStock})`); return; }
     if (isNaN(price) || price <= 0) { UI.toast('El precio del combo debe ser positivo.'); return; }
     if (tempCombos.some(c => c.quantity === quantity)) { UI.toast('Ya existe un combo con esa cantidad.'); return; }
+
     tempCombos.push({ id: `combo_${Date.now()}` as any, quantity, price });
     tempCombos.sort((a, b) => a.quantity - b.quantity);
     renderComboList();
@@ -254,6 +292,12 @@ export function openFoodForm(foodId?: string): void {
     renderComboList();
     updateSubmitButtonState();
   });
+
+  // Validación en tiempo real cuando cambia el stock
+  element.querySelector('#stock')!.addEventListener('input', validateComboQuantity);
+
+  // Validación en tiempo real cuando cambia la cantidad del combo
+  comboQuantityInput.addEventListener('input', validateComboQuantity);
 
   renderComboList();
   if (editing) {
