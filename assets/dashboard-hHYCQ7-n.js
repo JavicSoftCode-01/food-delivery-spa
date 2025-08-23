@@ -1,4 +1,4 @@
-import{U as g}from"./ui-DeEF8Jzz.js";import{F as l,O as x}from"./core-CiS44bps.js";import{f as m}from"./utils-DWTgWmvX.js";function k(r){setTimeout(()=>window.scrollTo(0,0),0);const a=n=>{var o,i;const c=l.getAll(),s=x.getSorted().filter(e=>e.state),f=s.filter(e=>!e.delivered).length,u=s.filter(e=>e.delivered).length,b=l.totalProfit();r.innerHTML=`<section class="space-y-4">
+import{U as g}from"./ui-DeEF8Jzz.js";import{F as l,O as x}from"./core-BboQpoEq.js";import{f as m}from"./utils-CHR9XXmZ.js";function k(r){setTimeout(()=>window.scrollTo(0,0),0);const a=n=>{var o,i;const c=l.getAll(),s=x.getSorted().filter(e=>e.state),f=s.filter(e=>!e.delivered).length,u=s.filter(e=>e.delivered).length,b=l.totalProfit();r.innerHTML=`<section class="space-y-4">
     <div class="grid grid-cols-2 gap-3">
       <div class="dashboard-card cursor-pointer p-3 bg-white dark:bg-dark-bg-secondary rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border dark:border-dark-border">
         <div class="flex items-center gap-2 mb-1">

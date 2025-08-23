@@ -1,4 +1,4 @@
-import{U as f}from"./ui-DeEF8Jzz.js";import{u as x}from"./core-CiS44bps.js";function C(s){var g;const b=localStorage.getItem("fd_meta_v1")||"{}";let n={};try{n=JSON.parse(b)||{}}catch(t){n={}}const y=(g=n.deliveryGapMinutes)!=null?g:15,o=!!n.darkMode;s.innerHTML=`
+import{U as f}from"./ui-DeEF8Jzz.js";import{u as x}from"./core-BboQpoEq.js";function C(s){var g;const b=localStorage.getItem("fd_meta_v1")||"{}";let n={};try{n=JSON.parse(b)||{}}catch(t){n={}}const y=(g=n.deliveryGapMinutes)!=null?g:15,o=!!n.darkMode;s.innerHTML=`
     <section class="space-y-4">
       <div class="settings-header bg-white dark:bg-dark-bg-secondary rounded-xl p-4 border dark:border-dark-border shadow-sm opacity-0 transform translate-y-4">
         <div class="flex items-center gap-3">

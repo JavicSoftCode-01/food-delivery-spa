@@ -1,4 +1,4 @@
-import{O as y,g as w,n as E}from"./core-CiS44bps.js";import{h as T}from"./orders-DI4iOo3T.js";import"./ui-DeEF8Jzz.js";import"./utils-DWTgWmvX.js";function q(i){var p;setTimeout(()=>window.scrollTo(0,0),0),i.innerHTML=`
+import{O as y,g as w,n as E}from"./core-BboQpoEq.js";import{h as T}from"./orders-hOMHlC1e.js";import"./ui-DeEF8Jzz.js";import"./utils-CHR9XXmZ.js";function q(i){var p;setTimeout(()=>window.scrollTo(0,0),0),i.innerHTML=`
     <div class="clients-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-32 opacity-0 transform translate-y-4">
       <div class="flex gap-2 items-center">
         <input id="inputFilterPhone" placeholder="Buscar por nombre o teléfono..." class="flex-1 px-3 py-2 border dark:border-dark-border rounded-lg bg-transparent transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" inputmode="text" />

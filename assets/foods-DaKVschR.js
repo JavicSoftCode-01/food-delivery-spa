@@ -1,4 +1,4 @@
-import{F as f,n as g,O as p}from"./core-CiS44bps.js";import{f as b}from"./utils-DWTgWmvX.js";import"./ui-DeEF8Jzz.js";function h(a){var u;setTimeout(()=>window.scrollTo(0,0),0),a.innerHTML=`<div class="food-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-32 opacity-0 transform translate-y-4">
+import{F as f,n as g,O as p}from"./core-BboQpoEq.js";import{f as b}from"./utils-CHR9XXmZ.js";import"./ui-DeEF8Jzz.js";function h(a){var u;setTimeout(()=>window.scrollTo(0,0),0),a.innerHTML=`<div class="food-container bg-white dark:bg-dark-bg-secondary rounded-xl p-3 border dark:border-dark-border space-y-3 mb-32 opacity-0 transform translate-y-4">
     <div class="flex gap-2 items-center">
       <input id="inputFilterFood" placeholder="Buscar por comida..." class="flex-1 px-3 py-2 border dark:border-dark-border rounded-lg bg-transparent transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-1 focus:ring-blue-500" />
       <button id="btnAddFood" class="px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all duration-200 hover:scale-105 active:scale-95">
