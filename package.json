@@ -20,7 +20,7 @@
   "devDependencies": {
     "gh-pages": "^6.3.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.2",
+    "vite": "^7.1.5",
     "rimraf": "^5.0.0"
   },
   "description": "",
